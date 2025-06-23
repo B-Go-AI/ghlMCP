@@ -1,0 +1,43 @@
+{
+  "name": "@callbackcode/ghlmcp",
+  "version": "1.0.0",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "description": "A Model Context Protocol (MCP) server for weather tools, built in TypeScript.",
+  "author": "CallBackCode <info@callbackcode.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CallBackCode/ghlMCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CallBackCode/ghlMCP/issues"
+  },
+  "homepage": "https://github.com/CallBackCode/ghlMCP#readme",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "server",
+    "typescript"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc --watch",
+    "test": "jest --runInBand"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.3",
+    "dotenv": "^16.5.0",
+    "jest": "^30.0.2",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.0",
+    "zod": "^3.25.67"
+  },
+  "type": "module"
+}
