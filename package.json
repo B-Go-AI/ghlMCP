@@ -1,14 +1,14 @@
 {
-  "name": "@callbackcode/ghlmcp",
+  "name": "@cllbk/ghlmcp",
   "version": "1.0.0",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "description": "A Model Context Protocol (MCP) server for weather tools, built in TypeScript.",
   "author": "CallBackCode <info@callbackcode.com>",
-  "license": "MIT",
+  "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CallBackCode/ghlMCP.git"
+    "url": "git+https://github.com/CallBackCode/ghlMCP.git"
   },
   "bugs": {
     "url": "https://github.com/CallBackCode/ghlMCP/issues"
@@ -39,5 +39,8 @@
     "@modelcontextprotocol/sdk": "^1.13.0",
     "zod": "^3.25.67"
   },
-  "type": "module"
+  "type": "module",
+  "directories": {
+    "test": "test"
+  }
 }
