@@ -7,14 +7,8 @@ export default {
   testEnvironment: "node",
   moduleFileExtensions: ["ts", "js", "json", "node"],
   transform: {
-    "^.+\\.(ts|tsx)$": ["ts-jest", { useESM: true }],
+    "^.+\\.(ts|tsx)$": ["ts-jest", { useESM: true, tsconfig: "tsconfig.json" }],
   },
   testMatch: ["**/test/**/*.test.ts"],
   extensionsToTreatAsEsm: [".ts"],
-  globals: {
-    "ts-jest": {
-      useESM: true,
-      tsconfig: "tsconfig.json",
-    },
-  },
 };

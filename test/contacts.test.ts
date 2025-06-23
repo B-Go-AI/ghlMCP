@@ -1,19 +1,19 @@
 // test/contacts.test.ts
 import { HighLevelApiClient } from "../src/api/client";
-import { ContactsApi } from "../src/api/contacts";
+import { ContactsMCP } from "../src/api/contacts";
 
 // Use API key and locationId from environment variables for security and flexibility
 const apiKey = process.env.GHL_API_KEY || "";
 const locationId = process.env.GHL_LOCATION_ID || "";
 const client = new HighLevelApiClient(apiKey);
-const contactsApi = new ContactsApi(client);
+const contactsApi = new ContactsMCP(client);
 
 let createdContactId: string | undefined;
 
 // Helper to generate a unique email for each test run
 const generateTestEmail = () => `test+${Date.now()}@example.com`;
 
-describe("ContactsApi", () => {
+describe("ContactsMCP", () => {
   it("should create, get, list, update, and delete a contact", async () => {
     try {
       const contact = await contactsApi.create({

@@ -80,7 +80,7 @@ export interface Contact {
   // Add more fields as the API evolves, referencing the official GoHighLevel documentation
 }
 
-export class ContactsApi {
+export class ContactsMCP {
   private client: HighLevelApiClient;
 
   constructor(client: HighLevelApiClient) {
@@ -95,7 +95,6 @@ export class ContactsApi {
       ? `/contacts/?locationId=${locationId}`
       : "/contacts";
     const res = await this.client.request<{ contacts: Contact[] }>(endpoint);
-    console.log("ContactsApi.list() response:", res); // Log the raw response for debugging
     // Accept both legacy and real API response shapes
     if (Array.isArray(res.contacts)) return res.contacts;
     if (res.data && Array.isArray(res.data.contacts)) return res.data.contacts;
