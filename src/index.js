@@ -20,7 +20,7 @@ const getApiKey = () => {
     return apiKey;
 };
 const apiClient = new HighLevelApiClient(getApiKey());
-const contactsApi = new ContactsApi(apiClient);
+const contactsApi = new ContactsMCP(apiClient);
 const server = new McpServer({
     name: "weather",
     version: "1.0.0",
