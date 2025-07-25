@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { HighLevelApiClient } from "./api/client";
-import { ContactsApi } from "./api/contacts";
+import { ContactsMCP } from "./api/contacts";
 import { z } from "zod";
 // Utility to get API key from env
 const getApiKey = () => {
