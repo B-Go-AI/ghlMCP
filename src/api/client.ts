@@ -30,6 +30,7 @@ export class HighLevelApiClient {
       process.env.GHL_API_KEY_AGENCY ||
       "";
     this.baseUrl = baseUrl;
+    console.log("Using API key:", this.apiKey.slice(0, 6) + "...[REDACTED]");
   }
 
   /**
