@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { HighLevelApiClient } from "./api/client";
-import { ContactsApi } from "./api/contacts";
+import { ContactsMCP } from "./api/contacts";
 import { z } from "zod";
 
 // Utility to get API key from env
@@ -12,7 +12,7 @@ const getApiKey = (): string => {
 };
 
 const apiClient = new HighLevelApiClient(getApiKey());
-const contactsApi = new ContactsApi(apiClient);
+const contactsApi = new ContactsMCP(apiClient);
 
 const server = new McpServer({
   name: "weather",
