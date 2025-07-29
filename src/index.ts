@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { HighLevelApiClient } from "./api/client";
+import { HighLevelApiClient } from "./api/client.js";
 import { ContactsMCP } from "./api/contacts";
 import { z } from "zod";
 
