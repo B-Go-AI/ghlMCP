@@ -1,6 +1,14 @@
-# GoHighLevel MCP Server
+# GoHighLevel Express API Server
 
-A robust Model Context Protocol (MCP) server for the GoHighLevel API, providing tools for managing contacts.
+A clean, self-hosted Express TypeScript server for GoHighLevel contact management, designed for n8n integration and Railway deployment.
+
+## Features
+- Accepts POST requests from n8n at `/execute-agent`
+- Authenticates using a GoHighLevel API key (header or env)
+- Accepts a session key or contact identifier from n8n
+- Uses a client map to route requests to the correct GHL subaccount
+- Performs basic contact create/update API calls to GHL
+- Returns a clean JSON response
 
 ## Installation
 
@@ -13,87 +21,64 @@ A robust Model Context Protocol (MCP) server for the GoHighLevel API, providing 
    ```sh
    npm install
    ```
-3. **Set your GoHighLevel API key and location ID:**
-
+3. **Set your GoHighLevel API key:**
    - Create a `.env` file in the project root:
-
      ```sh
-     cat <<EOF > .env
-     # --- Required: Agency Token or Location Token and Location ID ---
-     GHL_API_KEY=your_api_key_here
-     GHL_LOCATION_ID=your_location_id_here
-
-     # --- Optional: Test Only Variables ---
-
-     GHL_TEST_BUSINESS_ID=your_business_id_here
-     GHL_TEST_CONTACT_ID=your_contact_id_here
-
-     EOF
+     echo "GHL_API_KEY=your_api_key_here" > .env
      ```
-
-````
-
+   - (Optional) Add subaccount keys to the `clientMap` in `src/index.ts`.
 4. **Build the project:**
-
    ```sh
    npm run build
-````
-
-5. **Run the MCP server:**
-
+   ```
+5. **Run the server:**
    ```sh
    npm start
    ```
 
-6. **Run tests:**
-   ```sh
-   npm test
-   ```
+## Endpoint
 
-## Environment Variables
+### POST /execute-agent
 
-- `GHL_API_KEY` (required): Your GoHighLevel API key
-- `GHL_LOCATION_ID` (required): Your GoHighLevel location ID
+**Request Body:**
+```json
+{
+  "sessionKey": "string (optional)",
+  "contactId": "string (optional)",
+  "action": "create" | "update",
+  "data": { ...contact fields... }
+}
+```
+- `sessionKey` or `contactId` is required for client routing.
+- `action` must be `create` or `update`.
+- `data` must include `locationId` and, for updates, `id`.
 
-**Optional: Test Only**
+**Headers:**
+- `ghl-api-key` (optional): GHL API key for authentication (overrides env)
 
-- `GHL_TEST_BUSINESS_ID`: Used for businessId-based contact tests
-- `GHL_TEST_CONTACT_ID`: Used for contactId-based tests (if needed)
-
-## Available MCP Endpoints (Tools)
-
-<details>
-<summary><strong>Contacts</strong></summary>
-
-| Endpoint                  | Description                      | Required Params            | Optional Params                           |
-| ------------------------- | -------------------------------- | -------------------------- | ----------------------------------------- |
-| `listContacts`            | List all contacts                | `locationId`               |                                           |
-| `getContact`              | Get a contact by ID              | `id`, `locationId`         |                                           |
-| `createContact`           | Create a new contact             | `locationId`               | `firstName`, `lastName`, `email`, `phone` |
-| `updateContact`           | Update a contact by ID           | `id`, `locationId`         | `firstName`, `lastName`, `email`, `phone` |
-| `deleteContact`           | Delete a contact by ID           | `id`, `locationId`         |                                           |
-| `upsertContact`           | Upsert (create/update) a contact | `locationId`, `email`      | `firstName`, `lastName`, `phone`          |
-| `getContactsByBusinessId` | Get contacts by businessId       | `businessId`, `locationId` | `limit`, `skip`, `query`                  |
-
-</details>
-
-<!--
-Add more <details> blocks for other edges (e.g., organizations, tasks) if/when implemented.
--->
+**Response:**
+```json
+{
+  "success": true,
+  "result": { ...contact object... }
+}
+```
+Or, on error:
+```json
+{
+  "error": "Error message"
+}
+```
 
 ## Project Structure
-
 - `src/api/` — API wrappers for GoHighLevel endpoints
 - `src/types/` — Centralized TypeScript types
-- `src/index.ts` — MCP server entry point
-- `test/` — Jest test suites for each endpoint
+- `src/index.ts` — Express server entry point
 
 ## Notes
-
-- All endpoints require a valid GoHighLevel API key and location ID.
-- Responses are returned as pretty-printed JSON in text format for LLM compatibility.
-- See [GoHighLevel API Docs](https://github.com/GoHighLevel/highlevel-api-docs) for more details.
+- All requests require a valid GoHighLevel API key.
+- Only contact create/update is supported.
+- Designed for Railway and n8n integration.
 
 ---
-
 Provided by CallBack
