@@ -91,8 +91,9 @@ async function runTests() {
     await testExecuteAgent('list');
     console.log('');
 
-    // Test create contact (will fail without proper data, but tests endpoint)
+    // Test create contact with specific client
     await testExecuteAgent('create', {
+      clientId: 'client_BG',
       data: {
         firstName: 'Test',
         lastName: 'User',

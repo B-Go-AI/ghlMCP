@@ -228,6 +228,27 @@ curl -X POST http://localhost:3000/execute-agent \
 
 ## Multi-Client Configuration
 
+The server comes pre-configured with the following clients:
+
+- **client_BG**: `gMgcCQOGXIn1DK6lCDa7`
+- **client_ASB Financial**: `dsVEq34SgqUiiY64mdBT`
+- **client_American Senior Benefits**: `KWhVQQQr2bwwdVWxT02i`
+
+### Use Specific Client
+
+```bash
+curl -X POST http://localhost:3000/execute-agent \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "create",
+    "clientId": "client_BG",
+    "data": {
+      "firstName": "John",
+      "email": "john@example.com"
+    }
+  }'
+```
+
 ### Add Additional Clients
 
 ```bash
@@ -251,7 +272,7 @@ curl -X POST http://localhost:3000/sessions \
   -H "Content-Type: application/json" \
   -d '{
     "sessionKey": "session_123",
-    "clientId": "client2",
+    "clientId": "client_BG",
     "contactId": "optional_contact_id"
   }'
 

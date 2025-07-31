@@ -50,7 +50,7 @@ describe('Express Server Endpoints', () => {
   describe('POST /execute-agent', () => {
     it('should handle create contact action', async () => {
       const mockClient = { request: jest.fn() };
-      const mockConfig = { locationId: 'test-location', name: 'Test Client' };
+      const mockConfig = { locationId: 'test-location', name: 'client_BG', client_key: 'client_BG' };
       
       mockClientMap.getDefaultClient.mockReturnValue({
         client: mockClient,
@@ -83,7 +83,7 @@ describe('Express Server Endpoints', () => {
 
     it('should handle update contact action', async () => {
       const mockClient = { request: jest.fn() };
-      const mockConfig = { locationId: 'test-location', name: 'Test Client' };
+      const mockConfig = { locationId: 'test-location', name: 'client_BG', client_key: 'client_BG' };
       
       mockClientMap.getClientByContact.mockResolvedValue({
         client: mockClient,

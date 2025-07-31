@@ -2,12 +2,15 @@
 // Client map for routing requests to correct GHL subaccounts
 
 import { HighLevelApiClient } from "./client.js";
+import { CLIENTS } from "../clients.js";
 
 export interface ClientConfig {
-  apiKey: string;
+  apiKey?: string;
   locationId: string;
   businessId?: string;
   name?: string;
+  client_key?: string;
+  pit?: string;
 }
 
 export interface SessionMapping {
@@ -26,17 +29,27 @@ export class ClientMap {
   }
 
   /**
-   * Load default client from environment variables
+   * Load default client from environment variables and predefined clients
    */
   private loadDefaultClient(): void {
     const defaultApiKey = process.env.GHL_API_KEY;
     const defaultLocationId = process.env.GHL_LOCATION_ID;
     
+    // Load default client from environment variables
     if (defaultApiKey && defaultLocationId) {
       this.addClient("default", {
         apiKey: defaultApiKey,
         locationId: defaultLocationId,
         name: "Default Client"
+      });
+    }
+    
+    // Load predefined clients
+    for (const [clientId, config] of Object.entries(CLIENTS)) {
+      this.addClient(clientId, {
+        ...config,
+        apiKey: defaultApiKey, // Use the same API key for all clients
+        name: clientId
       });
     }
   }
@@ -45,6 +58,10 @@ export class ClientMap {
    * Add a new client configuration
    */
   public addClient(clientId: string, config: ClientConfig): void {
+    if (!config.apiKey) {
+      console.warn(`No API key provided for client ${clientId}, skipping...`);
+      return;
+    }
     const client = new HighLevelApiClient(config.apiKey);
     this.clients.set(clientId, client);
     this.configs.set(clientId, config);
