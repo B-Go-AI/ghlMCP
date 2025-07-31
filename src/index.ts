@@ -314,18 +314,25 @@ app.post('/sessions', (req: Request, res: Response) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`MCP Server listening on 0.0.0.0:${PORT}`);
-  console.log(`🚀 GHL API Server running on port ${PORT}`);
-  console.log(`💥 Health check: http://localhost:${PORT}/health`);
-  console.log(`🎯 Execute agent: http://localhost:${PORT}/execute-agent`);
+  console.log(`🚀 GHL API Server starting on port ${PORT}`);
+  console.log(`📡 Server bound to 0.0.0.0:${PORT} (production-ready)`);
+  console.log(`🌐 Available routes:`);
+  console.log(`   GET  /health - Health check endpoint`);
+  console.log(`   POST /execute-agent - Main n8n integration endpoint`);
+  console.log(`   POST /clients - Add new client configuration`);
+  console.log(`   GET  /clients - List all clients`);
+  console.log(`   DELETE /clients/:clientId - Remove client`);
+  console.log(`   POST /sessions - Add session mapping`);
   
   // Log available clients
   const clients = clientMap.listClients();
   if (clients.length > 0) {
-    console.log(`📋 Available clients: ${clients.map(c => c.id).join(', ')}`);
+    console.log(`📋 Loaded clients: ${clients.map(c => c.id).join(', ')}`);
   } else {
     console.log('⚠️  No clients configured. Set GHL_API_KEY and GHL_LOCATION_ID environment variables.');
   }
+  
+  console.log(`✅ Server ready for production deployment on Railway`);
 });
 
 // Graceful shutdown
