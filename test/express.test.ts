@@ -3,8 +3,8 @@
 
 import request from 'supertest';
 import express from 'express';
-import { ClientMap } from '../src/api/client-map';
-import { ContactsMCP } from '../src/api/contacts';
+import { ClientMap } from '../src/api/client-map.js';
+import { ContactsMCP } from '../src/api/contacts.js';
 
 // Mock the server for testing
 const app = express();

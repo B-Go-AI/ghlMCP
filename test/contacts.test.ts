@@ -1,6 +1,6 @@
 // test/contacts.test.ts
-import { HighLevelApiClient } from "../src/api/client";
-import { ContactsMCP } from "../src/api/contacts";
+import { HighLevelApiClient } from "../src/api/client.js";
+import { ContactsMCP } from "../src/api/contacts.js";
 
 // Use API key and locationId from environment variables for security and flexibility
 const apiKey = process.env.GHL_API_KEY || "";

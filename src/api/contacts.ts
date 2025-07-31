@@ -1,6 +1,6 @@
 // src/api/contacts.ts
 // HighLevel Contacts API wrapper
-import { HighLevelApiClient } from "./client";
+import { HighLevelApiClient } from "./client.js";
 
 export interface Contact {
   /** Unique identifier for the contact (required) */

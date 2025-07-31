@@ -1,7 +1,7 @@
 // src/api/client-map.ts
 // Client map for routing requests to correct GHL subaccounts
 
-import { HighLevelApiClient } from "./client";
+import { HighLevelApiClient } from "./client.js";
 
 export interface ClientConfig {
   apiKey: string;

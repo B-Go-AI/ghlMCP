@@ -1,8 +1,8 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import { z } from 'zod';
-import { ClientMap } from './api/client-map';
-import { ContactsMCP } from './api/contacts';
+import { ClientMap } from './api/client-map.js';
+import { ContactsMCP } from './api/contacts.js';
 
 // Load environment variables
 dotenv.config();
