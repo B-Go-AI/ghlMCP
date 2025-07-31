@@ -316,7 +316,7 @@ app.post('/sessions', (req: Request, res: Response) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`MCP Server listening on 0.0.0.0:${PORT}`);
   console.log(`🚀 GHL API Server running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`💥 Health check: http://localhost:${PORT}/health`);
   console.log(`🎯 Execute agent: http://localhost:${PORT}/execute-agent`);
   
   // Log available clients
