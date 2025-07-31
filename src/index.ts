@@ -314,15 +314,9 @@ app.post('/sessions', (req: Request, res: Response) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 GHL API Server starting on port ${PORT}`);
-  console.log(`📡 Server bound to 0.0.0.0:${PORT} (production-ready)`);
-  console.log(`🌐 Available routes:`);
-  console.log(`   GET  /health - Health check endpoint`);
-  console.log(`   POST /execute-agent - Main n8n integration endpoint`);
-  console.log(`   POST /clients - Add new client configuration`);
-  console.log(`   GET  /clients - List all clients`);
-  console.log(`   DELETE /clients/:clientId - Remove client`);
-  console.log(`   POST /sessions - Add session mapping`);
+  console.log(`MCP Server listening on 0.0.0.0:${PORT}`);
+  console.log(`🚀 GHL API Server running on port ${PORT}`);
+  console.log(`🎯 Execute agent: http://localhost:${PORT}/execute-agent`);
   
   // Log available clients
   const clients = clientMap.listClients();
