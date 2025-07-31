@@ -1,162 +1,70 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { HighLevelApiClient } from "./api/client";
-import { ContactsMCP } from "./api/contacts";
-import { z } from "zod";
+import express from "express";
+import dotenv from "dotenv";
+import { HighLevelApiClient } from "./api/client.js";
+import { ContactsMCP } from "./api/contacts.js";
 
-// Utility to get API key from env
-const getApiKey = (): string => {
-  const apiKey = process.env.GHL_API_KEY;
-  if (!apiKey) throw new Error("GHL_API_KEY environment variable is required");
-  return apiKey;
+dotenv.config();
+
+const app = express();
+app.use(express.json());
+
+// Example client map: sessionKey/contactId -> GHL API key
+const clientMap: Record<string, string> = {
+  // "sessionKeyOrContactId": "GHL_API_KEY_FOR_SUBACCOUNT",
+  // Populate this map as needed
 };
 
-const apiClient = new HighLevelApiClient(getApiKey());
-const contactsApi = new ContactsMCP(apiClient);
-
-const server = new McpServer({
-  name: "weather",
-  version: "1.0.0",
-  capabilities: {
-    resources: {},
-    tools: {},
-  },
-});
-
-/**
- * List all contacts
- */
-server.tool(
-  "listContacts",
-  "List all contacts",
-  { locationId: z.string().describe("Location ID") },
-  async ({ locationId }) => {
-    try {
-      const contacts = await contactsApi.list(locationId);
-      return {
-        content: [{ type: "text", text: JSON.stringify(contacts, null, 2) }],
-      };
-    } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-      };
-    }
-  }
-);
-
-/**
- * Get a contact by ID
- */
-server.tool(
-  "getContact",
-  "Get a contact by ID",
-  {
-    id: z.string().describe("Contact ID"),
-    locationId: z.string().describe("Location ID"),
-  },
-  async ({ id, locationId }) => {
-    try {
-      const contact = await contactsApi.get(id, locationId);
-      return {
-        content: [{ type: "text", text: JSON.stringify(contact, null, 2) }],
-      };
-    } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-      };
-    }
-  }
-);
-
-/**
- * Create a new contact
- */
-server.tool(
-  "createContact",
-  "Create a new contact",
-  {
-    data: z.object({
-      firstName: z.string().optional(),
-      lastName: z.string().optional(),
-      email: z.string().optional(),
-      phone: z.string().optional(),
-      locationId: z.string(),
-    }),
-  },
-  async ({ data }) => {
-    try {
-      const contact = await contactsApi.create(data);
-      return {
-        content: [{ type: "text", text: JSON.stringify(contact, null, 2) }],
-      };
-    } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-      };
-    }
-  }
-);
-
-/**
- * Update a contact by ID
- */
-server.tool(
-  "updateContact",
-  "Update a contact by ID",
-  {
-    id: z.string(),
-    locationId: z.string(),
-    data: z.object({
-      firstName: z.string().optional(),
-      lastName: z.string().optional(),
-      email: z.string().optional(),
-      phone: z.string().optional(),
-    }),
-  },
-  async ({ id, locationId, data }) => {
-    try {
-      const contact = await contactsApi.update(id, locationId, data);
-      return {
-        content: [{ type: "text", text: JSON.stringify(contact, null, 2) }],
-      };
-    } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-      };
-    }
-  }
-);
-
-/**
- * Delete a contact by ID
- */
-server.tool(
-  "deleteContact",
-  "Delete a contact by ID",
-  { id: z.string(), locationId: z.string() },
-  async ({ id, locationId }) => {
-    try {
-      const result = await contactsApi.delete(id, locationId);
-      return {
-        content: [
-          { type: "text", text: result ? "Contact deleted" : "Delete failed" },
-        ],
-      };
-    } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-      };
-    }
-  }
-);
-
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Weather MCP Server running on stdio");
+function getApiKeyFromRequest(req: express.Request): string {
+  // 1. Prefer API key in header
+  if (req.headers["ghl-api-key"]) return String(req.headers["ghl-api-key"]);
+  // 2. Fallback to env
+  if (process.env.GHL_API_KEY) return process.env.GHL_API_KEY;
+  throw new Error("GHL_API_KEY is required in header or environment");
 }
 
-main().catch(error => {
-  console.error("Fatal error in main():", error);
-  process.exit(1);
+app.post("/execute-agent", async (req, res) => {
+  try {
+    // Accept sessionKey or contactId from n8n
+    const { sessionKey, contactId, action, data } = req.body;
+    if (!sessionKey && !contactId) {
+      return res.status(400).json({ error: "Missing sessionKey or contactId" });
+    }
+
+    // Route to correct GHL subaccount using clientMap
+    let apiKey = getApiKeyFromRequest(req);
+    if (sessionKey && clientMap[sessionKey]) {
+      apiKey = clientMap[sessionKey];
+    } else if (contactId && clientMap[contactId]) {
+      apiKey = clientMap[contactId];
+    }
+
+    const apiClient = new HighLevelApiClient(apiKey);
+    const contactsApi = new ContactsMCP(apiClient);
+
+    // Only allow basic contact actions for now
+    let result;
+    if (action === "create") {
+      if (!data || !data.locationId) {
+        return res.status(400).json({ error: "Missing contact data or locationId" });
+      }
+      result = await contactsApi.create(data);
+    } else if (action === "update") {
+      if (!data || !data.id || !data.locationId) {
+        return res.status(400).json({ error: "Missing contact id, data, or locationId" });
+      }
+      const { id, locationId, ...updateData } = data;
+      result = await contactsApi.update(id, locationId, updateData);
+    } else {
+      return res.status(400).json({ error: "Invalid or missing action (must be 'create' or 'update')" });
+    }
+
+    return res.json({ success: true, result });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Express server running on port ${port}`);
 });
