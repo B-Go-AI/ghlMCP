@@ -83,17 +83,6 @@ app.get('/test', (req: Request, res: Response) => {
 app.post('/execute-agent', executeAgentHandler);
 console.log('✅ /execute-agent route registered');
 
-// Add error handling for the route
-app.use('/execute-agent', (err: any, req: Request, res: Response, next: any) => {
-  console.error('❌ Error in /execute-agent route:', err);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error in /execute-agent route',
-    message: err.message,
-    timestamp: new Date().toISOString()
-  });
-});
-
 // Legacy execution endpoint for n8n
 app.post('/execute-legacy', async (req: Request, res: Response) => {
   const startTime = Date.now();
@@ -367,7 +356,18 @@ app.post('/sessions', (req: Request, res: Response) => {
   }
 });
 
-// 404 handler for unhandled routes
+// Global error handling middleware (must be after all routes)
+app.use((err: any, req: Request, res: Response, next: any) => {
+  console.error('❌ Global error handler:', err);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    message: err.message,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404 handler for unhandled routes (must be last)
 app.use('*', (req: Request, res: Response) => {
   console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
@@ -375,6 +375,7 @@ app.use('*', (req: Request, res: Response) => {
     error: `Route not found: ${req.method} ${req.originalUrl}`,
     availableRoutes: [
       'GET /health',
+      'GET /test',
       'POST /execute-agent',
       'POST /execute-legacy',
       'POST /clients',
