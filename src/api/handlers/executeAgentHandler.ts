@@ -265,7 +265,7 @@ function extractContactLookupData(input: string): any {
 /**
  * Main handler for agent execution
  */
-export async function executeAgentHandler(req: Request, res: Response): Promise<void> {
+export async function executeAgentHandler(req: Request, res: Response) {
   const startTime = Date.now();
   
   try {

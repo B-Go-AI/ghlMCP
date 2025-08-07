@@ -67,6 +67,7 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Agent execution endpoint for AI agents (GHL MCP standard)
 app.post('/execute-agent', executeAgentHandler);
+console.log('✅ /execute-agent route registered');
 
 // Legacy execution endpoint for n8n
 app.post('/execute-legacy', async (req: Request, res: Response) => {
@@ -341,11 +342,41 @@ app.post('/sessions', (req: Request, res: Response) => {
   }
 });
 
+// 404 handler for unhandled routes
+app.use('*', (req: Request, res: Response) => {
+  console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    error: `Route not found: ${req.method} ${req.originalUrl}`,
+    availableRoutes: [
+      'GET /health',
+      'POST /execute-agent',
+      'POST /execute-legacy',
+      'POST /clients',
+      'GET /clients',
+      'DELETE /clients/:clientId',
+      'POST /sessions'
+    ],
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`MCP Server listening on 0.0.0.0:${PORT}`);
   console.log(`🚀 GHL API Server running on port ${PORT}`);
   console.log(`🎯 Execute agent: http://localhost:${PORT}/execute-agent`);
+  console.log(`🌐 Railway URL: https://your-app.up.railway.app/execute-agent`);
+  
+  // Log all registered routes
+  console.log('📋 Registered routes:');
+  console.log('  GET  /health');
+  console.log('  POST /execute-agent');
+  console.log('  POST /execute-legacy');
+  console.log('  POST /clients');
+  console.log('  GET  /clients');
+  console.log('  DELETE /clients/:clientId');
+  console.log('  POST /sessions');
   
   // Log available clients
   const clients = clientMap.listClients();
