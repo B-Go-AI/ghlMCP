@@ -51,6 +51,12 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       params: body || {}
     };
 
+    console.log('🚀 Making MCP call:', {
+      endpoint,
+      method,
+      requestBody: jsonRpcRequest
+    });
+
     const response = await fetch(`https://services.leadconnectorhq.com/mcp/${endpoint}`, {
       method,
       headers: {
@@ -62,12 +68,25 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       body: JSON.stringify(jsonRpcRequest)
     });
     
+    console.log('📥 MCP response status:', response.status);
+    console.log('📥 MCP response headers:', Object.fromEntries(response.headers.entries()));
+    
+    const responseText = await response.text();
+    console.log('📥 MCP response body:', responseText);
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      throw new Error(`HTTP ${response.status}: ${responseText}`);
     }
     
-    const result = await response.json();
+    // Try to parse as JSON
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError);
+      console.error('❌ Response text:', responseText);
+      throw new Error(`Failed to parse JSON response: ${responseText.substring(0, 100)}...`);
+    }
     
     // Handle JSON-RPC response format
     if (result.error) {
