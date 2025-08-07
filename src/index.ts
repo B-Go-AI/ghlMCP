@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 import { CLIENTS } from './clients.js';
+import { executeAgentHandler } from './api/handlers/executeAgentHandler.js';
 
 // Load environment variables
 dotenv.config();
@@ -64,8 +65,11 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Main execution endpoint for n8n
-app.post('/execute-agent', async (req: Request, res: Response) => {
+// Agent execution endpoint for AI agents (GHL MCP standard)
+app.post('/execute-agent', executeAgentHandler);
+
+// Legacy execution endpoint for n8n
+app.post('/execute-legacy', async (req: Request, res: Response) => {
   const startTime = Date.now();
   
   try {
