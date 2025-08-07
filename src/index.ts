@@ -433,10 +433,11 @@ app.use('*', (req: Request, res: Response) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`MCP Server listening on 0.0.0.0:${PORT}`);
-  console.log(`🚀 GHL API Server running on port ${PORT}`);
-  console.log(`🎯 Execute agent: http://localhost:${PORT}/execute-agent`);
-  console.log(`🌐 Railway URL: https://your-app.up.railway.app/execute-agent`);
+  console.log(`🚀 MCP Server listening on 0.0.0.0:${PORT}`);
+  console.log(`🌐 Railway URL: https://primary-production-1ca15.up.railway.app`);
+  console.log(`🎯 Execute agent: https://primary-production-1ca15.up.railway.app/execute-agent`);
+  console.log(`✅ Health check: https://primary-production-1ca15.up.railway.app/health`);
+  console.log(`🧪 Test endpoint: https://primary-production-1ca15.up.railway.app/test`);
   
   // Log all registered routes
   console.log('📋 Registered routes:');
