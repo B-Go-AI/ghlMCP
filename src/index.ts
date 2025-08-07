@@ -413,10 +413,12 @@ app.listen(PORT, '0.0.0.0', () => {
   
   // Check environment variables
   console.log('🔍 Environment Variables Check:');
-  console.log(`  GHL_LOCATION_ID: ${process.env.GHL_LOCATION_ID ? '✅ Set' : '❌ Missing'}`);
+  console.log(`  GHL_LOCATION_ID_BG: ${process.env.GHL_LOCATION_ID_BG ? '✅ Set' : '❌ Missing'}`);
   console.log(`  PIT_BG: ${process.env.PIT_BG ? '✅ Set' : '❌ Missing'}`);
-  console.log(`  GHL_LOCATION_ID_ASB: ${process.env.GHL_LOCATION_ID_ASB ? '✅ Set' : '❌ Missing'}`);
-  console.log(`  PIT_ASB: ${process.env.PIT_ASB ? '✅ Set' : '❌ Missing'}`);
+  console.log(`  GHL_LOCATION_ID_ASB_FINANCIAL: ${process.env.GHL_LOCATION_ID_ASB_FINANCIAL ? '✅ Set' : '❌ Missing'}`);
+  console.log(`  PIT_ASB_FINANCIAL: ${process.env.PIT_ASB_FINANCIAL ? '✅ Set' : '❌ Missing'}`);
+  console.log(`  GHL_LOCATION_ID_AMERICAN_SENIOR_BENEFITS: ${process.env.GHL_LOCATION_ID_AMERICAN_SENIOR_BENEFITS ? '✅ Set' : '❌ Missing'}`);
+  console.log(`  PIT_AMERICAN_SENIOR_BENEFITS: ${process.env.PIT_AMERICAN_SENIOR_BENEFITS ? '✅ Set' : '❌ Missing'}`);
   
   // Verify route registration
   const routes = app._router.stack
