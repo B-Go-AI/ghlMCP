@@ -65,9 +65,34 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+// Test endpoint to verify server is working
+app.get('/test', (req: Request, res: Response) => {
+  res.json({ 
+    message: 'Server is working!',
+    timestamp: new Date().toISOString(),
+    routes: [
+      'GET /health',
+      'GET /test',
+      'POST /execute-agent',
+      'POST /execute-legacy'
+    ]
+  });
+});
+
 // Agent execution endpoint for AI agents (GHL MCP standard)
 app.post('/execute-agent', executeAgentHandler);
 console.log('✅ /execute-agent route registered');
+
+// Add error handling for the route
+app.use('/execute-agent', (err: any, req: Request, res: Response, next: any) => {
+  console.error('❌ Error in /execute-agent route:', err);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error in /execute-agent route',
+    message: err.message,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Legacy execution endpoint for n8n
 app.post('/execute-legacy', async (req: Request, res: Response) => {
@@ -384,6 +409,19 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📋 Loaded clients: ${clients.map(c => c.id).join(', ')}`);
   } else {
     console.log('⚠️  No clients configured. Set GHL_API_KEY and GHL_LOCATION_ID environment variables.');
+  }
+  
+  // Verify route registration
+  const routes = app._router.stack
+    .filter((layer: any) => layer.route)
+    .map((layer: any) => `${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`);
+  
+  console.log('🔍 Actual registered routes:', routes);
+  
+  if (routes.includes('POST /execute-agent')) {
+    console.log('✅ /execute-agent route confirmed registered');
+  } else {
+    console.log('❌ /execute-agent route NOT found in registered routes');
   }
   
   console.log(`✅ Server ready for production deployment on Railway`);
