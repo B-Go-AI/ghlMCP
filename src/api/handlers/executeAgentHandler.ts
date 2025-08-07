@@ -43,6 +43,14 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
 
   // Helper function to make MCP API calls
   const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
+    // Format as JSON-RPC 2.0
+    const jsonRpcRequest = {
+      jsonrpc: "2.0",
+      method: endpoint,
+      id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      params: body || {}
+    };
+
     const response = await fetch(`https://services.leadconnectorhq.com/mcp/${endpoint}`, {
       method,
       headers: {
@@ -51,7 +59,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
         'Content-Type': 'application/json',
         'Accept': 'application/json, text/event-stream'
       },
-      ...(body && { body: JSON.stringify(body) })
+      body: JSON.stringify(jsonRpcRequest)
     });
     
     if (!response.ok) {
@@ -59,7 +67,14 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
     
-    return response.json();
+    const result = await response.json();
+    
+    // Handle JSON-RPC response format
+    if (result.error) {
+      throw new Error(`JSON-RPC Error: ${result.error.message}`);
+    }
+    
+    return result.result || result;
   };
 
   // Simple natural language processing to map input to MCP tools
