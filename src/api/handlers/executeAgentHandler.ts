@@ -273,7 +273,17 @@ export async function executeAgentHandler(req: Request, res: Response) {
       method: req.method,
       url: req.url,
       body: req.body,
-      headers: req.headers['content-type']
+      headers: req.headers['content-type'],
+      userAgent: req.headers['user-agent'],
+      origin: req.headers['origin']
+    });
+
+    // Log environment variables for debugging
+    console.log('🔍 Environment check:', {
+      GHL_API_KEY: process.env.GHL_API_KEY ? '✅ Set' : '❌ Missing',
+      GHL_LOCATION_ID_BG: process.env.GHL_LOCATION_ID_BG ? '✅ Set' : '❌ Missing',
+      PIT_BG: process.env.PIT_BG ? '✅ Set' : '❌ Missing',
+      NODE_ENV: process.env.NODE_ENV || 'development'
     });
 
     // Validate request

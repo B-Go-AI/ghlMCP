@@ -14,6 +14,30 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// CORS headers for cross-origin requests
+app.use((req: Request, res: Response, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// Request logging middleware
+app.use((req: Request, res: Response, next) => {
+  console.log(`📥 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  console.log(`   Headers:`, {
+    'content-type': req.headers['content-type'],
+    'user-agent': req.headers['user-agent'],
+    'origin': req.headers['origin']
+  });
+  next();
+});
+
 // Request validation schema for n8n compatibility
 const ExecuteAgentRequestSchema = z.object({
   sessionKey: z.string().optional().describe('Session key for client routing'),
@@ -75,13 +99,33 @@ app.get('/test', (req: Request, res: Response) => {
       'GET /test',
       'POST /execute-agent',
       'POST /execute-legacy'
-    ]
+    ],
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || 'development',
+      PORT: process.env.PORT || '3000',
+      GHL_API_KEY: process.env.GHL_API_KEY ? '✅ Set' : '❌ Missing',
+      GHL_LOCATION_ID_BG: process.env.GHL_LOCATION_ID_BG ? '✅ Set' : '❌ Missing',
+      PIT_BG: process.env.PIT_BG ? '✅ Set' : '❌ Missing'
+    }
+  });
+});
+
+// Simple execute-agent test endpoint
+app.get('/execute-agent-test', (req: Request, res: Response) => {
+  res.json({
+    message: 'execute-agent endpoint is accessible',
+    method: 'GET',
+    timestamp: new Date().toISOString(),
+    note: 'Use POST /execute-agent for actual agent execution'
   });
 });
 
 // Agent execution endpoint for AI agents (GHL MCP standard)
-app.post('/execute-agent', executeAgentHandler);
-console.log('✅ /execute-agent route registered');
+app.post('/execute-agent', async (req: Request, res: Response) => {
+  console.log('🎯 /execute-agent route hit directly');
+  return executeAgentHandler(req, res);
+});
+console.log('✅ /execute-agent route registered with explicit handler');
 
 // Legacy execution endpoint for n8n
 app.post('/execute-legacy', async (req: Request, res: Response) => {
