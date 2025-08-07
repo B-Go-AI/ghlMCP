@@ -48,7 +48,8 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,
         'locationId': clientConfig.locationId,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'
       },
       ...(body && { body: JSON.stringify(body) })
     });
