@@ -3,8 +3,6 @@
 // Designed to be used by LangChain agent executor
 
 import { CLIENTS } from '../../clients.js';
-import { HighLevelApiClient } from '../../api/client.js';
-import { ContactsMCP } from '../../api/contacts.js';
 
 /**
  * Interface for the createContact function parameters
@@ -65,86 +63,23 @@ export async function createContact(params: CreateContactParams): Promise<Create
       throw new Error(`Location ID not found for clientId: ${clientId}`);
     }
 
-    // Create API client with the PIT token
-    const apiClient = new HighLevelApiClient(pit);
-    
-    // Create contacts API wrapper
-    const contactsApi = new ContactsMCP(apiClient);
-
-    // Prepare contact data with locationId
-    const contactData = {
-      ...contact,
-      locationId
-    };
-
-    // Create the contact using the existing API infrastructure
-    const createdContact = await contactsApi.create(contactData);
-
-    return {
-      success: true,
-      contact: createdContact,
-      contactId: createdContact.id
-    };
-
-  } catch (error) {
-    console.error('Error creating contact:', error);
-    
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
-}
-
-/**
- * Alternative implementation using direct MCP client call
- * This follows the pattern you described with mcpClient.call()
- * 
- * Note: This assumes you have an MCP client available that can call
- * the "contacts_create-contact" method. You'll need to import and
- * configure the MCP client according to your setup.
- */
-export async function createContactViaMCP(params: CreateContactParams): Promise<CreateContactResponse> {
-  try {
-    const { clientId, contact } = params;
-
-    // Validate required parameters
-    if (!clientId) {
-      throw new Error('clientId is required');
-    }
-
-    if (!contact || !contact.email || !contact.firstName || !contact.lastName) {
-      throw new Error('contact object must contain email, firstName, and lastName');
-    }
-
-    // Get client configuration
-    const clientConfig = CLIENTS[clientId];
-    if (!clientConfig) {
-      throw new Error(`Client configuration not found for clientId: ${clientId}`);
-    }
-
-    // Extract pit and locationId from client config
-    const { pit, locationId } = clientConfig;
-
-    if (!pit) {
-      throw new Error(`PIT token not found for clientId: ${clientId}`);
-    }
-
-    if (!locationId) {
-      throw new Error(`Location ID not found for clientId: ${clientId}`);
-    }
-
-    // TODO: Import and configure your MCP client
-    // const { mcpClient } = await import('your-mcp-client-module');
-    
-    // Call the MCP server method
-    const result = await mcpClient.call("contacts_create-contact", {
+    // Make direct POST request to MCP endpoint
+    const response = await fetch('https://services.leadconnectorhq.com/mcp/contacts_create-contact', {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${pit}`
+        'Authorization': `Bearer ${pit}`,
+        'locationId': locationId,
+        'Content-Type': 'application/json'
       },
-      locationId,
-      body: contact
+      body: JSON.stringify(contact)
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const result = await response.json();
 
     return {
       success: true,
@@ -153,7 +88,7 @@ export async function createContactViaMCP(params: CreateContactParams): Promise<
     };
 
   } catch (error) {
-    console.error('Error creating contact via MCP:', error);
+    console.error('Error creating contact:', error);
     
     return {
       success: false,
