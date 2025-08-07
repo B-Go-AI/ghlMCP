@@ -41,22 +41,31 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     throw new Error(`Client configuration not found for clientId: ${clientId}`);
   }
 
-  // Helper function to make MCP API calls (using direct approach like createContact.ts)
-  const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
+  // Helper function to make MCP API calls using JSON-RPC 2.0 protocol
+  const makeMcpCall = async (method: string, params?: any) => {
     console.log('🚀 Making MCP call:', {
-      endpoint,
       method,
-      requestBody: body
+      params
     });
 
-    const response = await fetch(`https://services.leadconnectorhq.com/mcp/${endpoint}`, {
-      method,
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const jsonRpcRequest = {
+      jsonrpc: "2.0",
+      method: method,
+      id: requestId,
+      params: params || {}
+    };
+
+    const response = await fetch('https://services.leadconnectorhq.com/mcp', {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,
         'locationId': clientConfig.locationId,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'
       },
-      body: body ? JSON.stringify(body) : undefined
+      body: JSON.stringify(jsonRpcRequest)
     });
     
     console.log('📥 MCP response status:', response.status);
@@ -66,10 +75,44 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
     
-    const result = await response.json();
-    console.log('📥 MCP response body:', result);
-    
-    return result;
+    // Handle Server-Sent Events response
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/event-stream')) {
+      const text = await response.text();
+      console.log('📥 Raw SSE response:', text);
+      
+      // Parse SSE format: "event: message\ndata: {...}"
+      const lines = text.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonData = line.substring(6); // Remove "data: " prefix
+          try {
+            const result = JSON.parse(jsonData);
+            console.log('📥 Parsed SSE response:', result);
+            
+            if (result.error) {
+              throw new Error(`JSON-RPC Error: ${result.error.message || result.error}`);
+            }
+            
+            return result.result;
+          } catch (parseError) {
+            console.error('Failed to parse SSE data:', parseError);
+            throw new Error(`Failed to parse SSE response: ${jsonData}`);
+          }
+        }
+      }
+      throw new Error('No valid data found in SSE response');
+    } else {
+      // Handle regular JSON response
+      const result = await response.json();
+      console.log('📥 JSON response body:', result);
+      
+      if (result.error) {
+        throw new Error(`JSON-RPC Error: ${result.error.message || result.error}`);
+      }
+      
+      return result.result;
+    }
   };
 
   // Simple natural language processing to map input to MCP tools
@@ -86,7 +129,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('Contact creation requires email, firstName, and lastName');
     }
     
-    const result = await makeMcpCall('contacts_create-contact', 'POST', contactData);
+         const result = await makeMcpCall('contacts.create', contactData);
     console.log('✅ Contact created successfully');
     return {
       action: 'create_contact',
@@ -105,7 +148,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('SMS sending requires phone number and message');
     }
     
-    const result = await makeMcpCall('conversations_send-a-new-message', 'POST', smsData);
+         const result = await makeMcpCall('conversations.send', smsData);
     console.log('✅ SMS sent successfully');
     return {
       action: 'send_sms',
@@ -127,7 +170,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     // If email provided, first find the contact
     let contactId = updateData.contactId;
     if (!contactId && updateData.email) {
-      const contacts = await makeMcpCall('contacts_get-contacts', 'GET');
+      const contacts = await makeMcpCall('contacts.list');
       const contact = contacts.find((c: any) => c.email === updateData.email);
       if (!contact) {
         throw new Error(`Contact not found with email: ${updateData.email}`);
@@ -135,7 +178,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       contactId = contact.id;
     }
     
-    const result = await makeMcpCall('contacts_update-contact', 'PUT', { contactId, ...updateData.data });
+    const result = await makeMcpCall('contacts.update', { contactId, ...updateData.data });
     console.log('✅ Contact updated successfully');
     return {
       action: 'update_contact',
@@ -156,9 +199,9 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     
     let result;
     if (lookupData.contactId) {
-      result = await makeMcpCall('contacts_get-contact', 'GET', { contactId: lookupData.contactId });
+      result = await makeMcpCall('contacts.get', { contactId: lookupData.contactId });
     } else {
-      const contacts = await makeMcpCall('contacts_get-contacts', 'GET');
+      const contacts = await makeMcpCall('contacts.list');
       result = contacts.find((c: any) => c.email === lookupData.email);
       if (!result) {
         throw new Error(`Contact not found with email: ${lookupData.email}`);
