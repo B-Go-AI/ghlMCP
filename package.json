@@ -24,7 +24,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node build/index.js",
+    "start": "node build/index.js",
+    "postinstall": "npm run build",
     "dev": "ts-node src/index.ts",
     "test": "jest --runInBand"
   },
