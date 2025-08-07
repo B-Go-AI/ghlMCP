@@ -41,20 +41,12 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     throw new Error(`Client configuration not found for clientId: ${clientId}`);
   }
 
-  // Helper function to make MCP API calls
+  // Helper function to make MCP API calls (using direct approach like createContact.ts)
   const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
-    // Format as JSON-RPC 2.0
-    const jsonRpcRequest = {
-      jsonrpc: "2.0",
-      method: endpoint,
-      id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      params: body || {}
-    };
-
     console.log('🚀 Making MCP call:', {
       endpoint,
       method,
-      requestBody: jsonRpcRequest
+      requestBody: body
     });
 
     const response = await fetch(`https://services.leadconnectorhq.com/mcp/${endpoint}`, {
@@ -62,58 +54,22 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,
         'locationId': clientConfig.locationId,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(jsonRpcRequest)
+      body: body ? JSON.stringify(body) : undefined
     });
     
     console.log('📥 MCP response status:', response.status);
-    console.log('📥 MCP response headers:', Object.fromEntries(response.headers.entries()));
-    
-    const responseText = await response.text();
-    console.log('📥 MCP response body:', responseText);
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${responseText}`);
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
     
-    // Handle Server-Sent Events (SSE) response format
-    let result;
-    if (responseText.startsWith('event: message')) {
-      // Parse SSE format: "event: message\ndata: {...}"
-      const lines = responseText.split('\n');
-      const dataLine = lines.find(line => line.startsWith('data: '));
-      
-      if (dataLine) {
-        const jsonData = dataLine.substring(6); // Remove "data: " prefix
-        try {
-          result = JSON.parse(jsonData);
-        } catch (parseError) {
-          console.error('❌ SSE JSON parse error:', parseError);
-          console.error('❌ SSE data:', jsonData);
-          throw new Error(`Failed to parse SSE JSON: ${jsonData.substring(0, 100)}...`);
-        }
-      } else {
-        throw new Error('No data line found in SSE response');
-      }
-    } else {
-      // Try to parse as regular JSON
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('❌ JSON parse error:', parseError);
-        console.error('❌ Response text:', responseText);
-        throw new Error(`Failed to parse JSON response: ${responseText.substring(0, 100)}...`);
-      }
-    }
+    const result = await response.json();
+    console.log('📥 MCP response body:', result);
     
-    // Handle JSON-RPC response format
-    if (result.error) {
-      throw new Error(`JSON-RPC Error: ${result.error.message}`);
-    }
-    
-    return result.result || result;
+    return result;
   };
 
   // Simple natural language processing to map input to MCP tools
