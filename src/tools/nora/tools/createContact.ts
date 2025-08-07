@@ -2,7 +2,7 @@
 // Tool for creating GoHighLevel contacts via MCP server
 // Designed to be used by LangChain agent executor
 
-import { CLIENTS } from '../../clients.js';
+import { CLIENTS } from '../../../clients';
 
 /**
  * Interface for the createContact function parameters

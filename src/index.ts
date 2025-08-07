@@ -1,8 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import { z } from 'zod';
-import { ClientMap } from './api/client-map.js';
-import { ContactsMCP } from './api/contacts.js';
+import { CLIENTS } from './clients.js';
 
 // Load environment variables
 dotenv.config();
@@ -29,8 +28,31 @@ const ExecuteAgentRequestSchema = z.object({
 
 type ExecuteAgentRequest = z.infer<typeof ExecuteAgentRequestSchema>;
 
-// Initialize client map
-const clientMap = new ClientMap();
+// Initialize client map - simplified for current structure
+const clientMap = {
+  getClient: (clientId: string) => CLIENTS[clientId] ? { apiKey: process.env.GHL_API_KEY } : null,
+  getConfig: (clientId: string) => CLIENTS[clientId] || null,
+  getDefaultClient: () => {
+    const defaultClient = Object.keys(CLIENTS)[0];
+    return defaultClient ? {
+      client: { apiKey: process.env.GHL_API_KEY },
+      config: CLIENTS[defaultClient]
+    } : null;
+  },
+  listClients: () => Object.keys(CLIENTS).map(id => ({ id, config: CLIENTS[id] })),
+  addClient: (clientId: string, config: any) => {
+    console.log(`Adding client: ${clientId}`);
+    // In this simplified version, we just log the addition
+  },
+  removeClient: (clientId: string) => {
+    console.log(`Removing client: ${clientId}`);
+    return true; // In this simplified version, we just return true
+  },
+  addSessionMapping: (sessionKey: string, clientId: string, contactId?: string) => {
+    console.log(`Adding session mapping: ${sessionKey} -> ${clientId}`);
+    // In this simplified version, we just log the mapping
+  }
+};
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
@@ -83,14 +105,6 @@ app.post('/execute-agent', async (req: Request, res: Response) => {
         targetClient = { client, config };
         console.log(`🎯 Using client ID: ${validatedRequest.clientId}`);
       }
-    } else if (validatedRequest.sessionKey) {
-      // Use session key mapping
-      targetClient = clientMap.getClientBySession(validatedRequest.sessionKey);
-      console.log(`🔑 Using session key: ${validatedRequest.sessionKey}`);
-    } else if (validatedRequest.contactIdentifier) {
-      // Find client by contact identifier
-      targetClient = await clientMap.getClientByContact(validatedRequest.contactIdentifier);
-      console.log(`👤 Found client by contact: ${validatedRequest.contactIdentifier}`);
     } else {
       // Use default client
       targetClient = clientMap.getDefaultClient();
@@ -113,24 +127,38 @@ app.post('/execute-agent', async (req: Request, res: Response) => {
       console.log(`📍 Overriding location ID: ${validatedRequest.locationId}`);
     }
     
-    // Initialize contacts API
-    const contactsApi = new ContactsMCP(targetClient.client);
-    
-    // Execute the requested action
+    // Execute the requested action using direct fetch calls
     let result: any;
     let contactId = validatedRequest.contactIdentifier || targetClient.contactId;
     
     console.log(`⚡ Executing action: ${validatedRequest.action}`);
+    
+    // Helper function to make MCP API calls
+    const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
+      const response = await fetch(`https://services.leadconnectorhq.com/mcp/${endpoint}`, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${targetClient.config.pit}`,
+          'locationId': targetClient.config.locationId,
+          'Content-Type': 'application/json'
+        },
+        ...(body && { body: JSON.stringify(body) })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      return response.json();
+    };
     
     switch (validatedRequest.action) {
       case 'create':
         if (!validatedRequest.data) {
           throw new Error('Data is required for create action');
         }
-        result = await contactsApi.create({
-          ...validatedRequest.data,
-          locationId: targetClient.config.locationId
-        });
+        result = await makeMcpCall('contacts_create-contact', 'POST', validatedRequest.data);
         console.log('✅ Contact created:', result.id);
         break;
         
@@ -141,7 +169,7 @@ app.post('/execute-agent', async (req: Request, res: Response) => {
         if (!validatedRequest.data) {
           throw new Error('Data is required for update action');
         }
-        result = await contactsApi.update(contactId, targetClient.config.locationId, validatedRequest.data);
+        result = await makeMcpCall(`contacts_update-contact/${contactId}`, 'PUT', validatedRequest.data);
         console.log('✅ Contact updated:', contactId);
         break;
         
@@ -149,12 +177,12 @@ app.post('/execute-agent', async (req: Request, res: Response) => {
         if (!contactId) {
           throw new Error('Contact identifier is required for get action');
         }
-        result = await contactsApi.get(contactId, targetClient.config.locationId);
+        result = await makeMcpCall(`contacts_get-contact/${contactId}`, 'GET');
         console.log('✅ Contact retrieved:', contactId);
         break;
         
       case 'list':
-        result = await contactsApi.list(targetClient.config.locationId);
+        result = await makeMcpCall('contacts_list-contacts', 'GET');
         console.log(`✅ Listed ${Array.isArray(result) ? result.length : 0} contacts`);
         break;
         
@@ -162,7 +190,7 @@ app.post('/execute-agent', async (req: Request, res: Response) => {
         if (!contactId) {
           throw new Error('Contact identifier is required for delete action');
         }
-        result = await contactsApi.delete(contactId, targetClient.config.locationId);
+        result = await makeMcpCall(`contacts_delete-contact/${contactId}`, 'DELETE');
         console.log('✅ Contact deleted:', contactId);
         break;
         
@@ -170,10 +198,7 @@ app.post('/execute-agent', async (req: Request, res: Response) => {
         if (!validatedRequest.data) {
           throw new Error('Data is required for upsert action');
         }
-        result = await contactsApi.upsert({
-          ...validatedRequest.data,
-          locationId: targetClient.config.locationId
-        });
+        result = await makeMcpCall('contacts_upsert-contact', 'POST', validatedRequest.data);
         console.log('✅ Contact upserted:', result.id);
         break;
         

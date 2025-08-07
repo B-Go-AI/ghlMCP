@@ -1,4 +1,8 @@
-import { ClientConfig } from './api/client-map.js';
+export interface ClientConfig {
+  client_key: string;
+  locationId: string;
+  pit: string;
+}
 
 export const CLIENTS: Record<string, ClientConfig> = {
   "client_BG": {

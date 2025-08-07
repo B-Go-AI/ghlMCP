@@ -1,5 +1,5 @@
 // test/createContact.test.ts
-import { createContact, CreateContactParams } from '../src/tools/nora/tools/createContact.js';
+import { createContact, CreateContactParams } from '../src/tools/nora/tools/createContact';
 
 describe('createContact Tool', () => {
   it('should validate required parameters', async () => {
@@ -53,16 +53,7 @@ describe('createContact Tool', () => {
       }
     };
 
-    // Mock the API call to avoid making real requests during testing
-    const originalContactsMCP = await import('../src/api/contacts.js');
-    const mockCreate = jest.fn().mockResolvedValue({
-      id: 'test-contact-id',
-      email: 'test@example.com',
-      firstName: 'John',
-      lastName: 'Doe'
-    });
-
-    // Note: In a real test environment, you would mock the entire ContactsMCP class
+    // Note: In a real test environment, you would mock the fetch call
     // This is just a demonstration of the expected behavior
     
     expect(params.clientId).toBe('client_BG');
