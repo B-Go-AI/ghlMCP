@@ -78,14 +78,34 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error(`HTTP ${response.status}: ${responseText}`);
     }
     
-    // Try to parse as JSON
+    // Handle Server-Sent Events (SSE) response format
     let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError);
-      console.error('❌ Response text:', responseText);
-      throw new Error(`Failed to parse JSON response: ${responseText.substring(0, 100)}...`);
+    if (responseText.startsWith('event: message')) {
+      // Parse SSE format: "event: message\ndata: {...}"
+      const lines = responseText.split('\n');
+      const dataLine = lines.find(line => line.startsWith('data: '));
+      
+      if (dataLine) {
+        const jsonData = dataLine.substring(6); // Remove "data: " prefix
+        try {
+          result = JSON.parse(jsonData);
+        } catch (parseError) {
+          console.error('❌ SSE JSON parse error:', parseError);
+          console.error('❌ SSE data:', jsonData);
+          throw new Error(`Failed to parse SSE JSON: ${jsonData.substring(0, 100)}...`);
+        }
+      } else {
+        throw new Error('No data line found in SSE response');
+      }
+    } else {
+      // Try to parse as regular JSON
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ JSON parse error:', parseError);
+        console.error('❌ Response text:', responseText);
+        throw new Error(`Failed to parse JSON response: ${responseText.substring(0, 100)}...`);
+      }
     }
     
     // Handle JSON-RPC response format
