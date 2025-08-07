@@ -130,7 +130,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('Contact creation requires email, firstName, and lastName');
     }
     
-    const result = await makeMcpCall('contacts.create', 'POST', contactData);
+    const result = await makeMcpCall('contacts_create-contact', 'POST', contactData);
     console.log('✅ Contact created successfully');
     return {
       action: 'create_contact',
@@ -149,7 +149,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('SMS sending requires phone number and message');
     }
     
-    const result = await makeMcpCall('conversations.send', 'POST', smsData);
+    const result = await makeMcpCall('conversations_send-a-new-message', 'POST', smsData);
     console.log('✅ SMS sent successfully');
     return {
       action: 'send_sms',
@@ -171,7 +171,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     // If email provided, first find the contact
     let contactId = updateData.contactId;
     if (!contactId && updateData.email) {
-      const contacts = await makeMcpCall('contacts.list', 'GET');
+      const contacts = await makeMcpCall('contacts_get-contacts', 'GET');
       const contact = contacts.find((c: any) => c.email === updateData.email);
       if (!contact) {
         throw new Error(`Contact not found with email: ${updateData.email}`);
@@ -179,7 +179,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       contactId = contact.id;
     }
     
-    const result = await makeMcpCall(`contacts.update/${contactId}`, 'PUT', updateData.data);
+    const result = await makeMcpCall('contacts_update-contact', 'PUT', { contactId, ...updateData.data });
     console.log('✅ Contact updated successfully');
     return {
       action: 'update_contact',
@@ -200,9 +200,9 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     
     let result;
     if (lookupData.contactId) {
-      result = await makeMcpCall(`contacts.get/${lookupData.contactId}`, 'GET');
+      result = await makeMcpCall('contacts_get-contact', 'GET', { contactId: lookupData.contactId });
     } else {
-      const contacts = await makeMcpCall('contacts.list', 'GET');
+      const contacts = await makeMcpCall('contacts_get-contacts', 'GET');
       result = contacts.find((c: any) => c.email === lookupData.email);
       if (!result) {
         throw new Error(`Contact not found with email: ${lookupData.email}`);
