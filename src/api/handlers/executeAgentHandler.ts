@@ -57,13 +57,13 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       params: params || {}
     };
 
-    const response = await fetch('https://services.leadconnectorhq.com/mcp', {
+    const response = await fetch('https://rest.gohighlevel.com/mcp', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,
         'locationId': clientConfig.locationId,
         'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream'
+        'Accept': 'application/json,text/event-stream'
       },
       body: JSON.stringify(jsonRpcRequest)
     });
@@ -129,7 +129,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('Contact creation requires email, firstName, and lastName');
     }
     
-         const result = await makeMcpCall('contacts.create', contactData);
+         const result = await makeMcpCall('Create Contact', contactData);
     console.log('✅ Contact created successfully');
     return {
       action: 'create_contact',
@@ -148,7 +148,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('SMS sending requires phone number and message');
     }
     
-         const result = await makeMcpCall('conversations.send', smsData);
+         const result = await makeMcpCall('Send Message', smsData);
     console.log('✅ SMS sent successfully');
     return {
       action: 'send_sms',
@@ -170,7 +170,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     // If email provided, first find the contact
     let contactId = updateData.contactId;
     if (!contactId && updateData.email) {
-      const contacts = await makeMcpCall('contacts.list');
+      const contacts = await makeMcpCall('List Contacts');
       const contact = contacts.find((c: any) => c.email === updateData.email);
       if (!contact) {
         throw new Error(`Contact not found with email: ${updateData.email}`);
@@ -178,7 +178,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       contactId = contact.id;
     }
     
-    const result = await makeMcpCall('contacts.update', { contactId, ...updateData.data });
+    const result = await makeMcpCall('Update Contact', { contactId, ...updateData.data });
     console.log('✅ Contact updated successfully');
     return {
       action: 'update_contact',
@@ -199,9 +199,9 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     
     let result;
     if (lookupData.contactId) {
-      result = await makeMcpCall('contacts.get', { contactId: lookupData.contactId });
+      result = await makeMcpCall('Get Contact', { contactId: lookupData.contactId });
     } else {
-      const contacts = await makeMcpCall('contacts.list');
+      const contacts = await makeMcpCall('List Contacts');
       result = contacts.find((c: any) => c.email === lookupData.email);
       if (!result) {
         throw new Error(`Contact not found with email: ${lookupData.email}`);
