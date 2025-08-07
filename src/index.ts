@@ -85,7 +85,20 @@ app.get('/health', (req: Request, res: Response) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     clients: clientMap.listClients().length,
-    version: '1.1.1'
+    version: '1.1.1',
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || 'development',
+      PORT: process.env.PORT || '3000',
+      GHL_API_KEY: process.env.GHL_API_KEY ? '✅ Set' : '❌ Missing',
+      GHL_LOCATION_ID_BG: process.env.GHL_LOCATION_ID_BG ? '✅ Set' : '❌ Missing',
+      PIT_BG: process.env.PIT_BG ? '✅ Set' : '❌ Missing'
+    },
+    routes: [
+      'GET /health',
+      'GET /test',
+      'POST /execute-agent',
+      'POST /execute-legacy'
+    ]
   });
 });
 
@@ -432,12 +445,15 @@ app.use('*', (req: Request, res: Response) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 MCP Server listening on 0.0.0.0:${PORT}`);
   console.log(`🌐 Railway URL: https://primary-production-1ca15.up.railway.app`);
   console.log(`🎯 Execute agent: https://primary-production-1ca15.up.railway.app/execute-agent`);
   console.log(`✅ Health check: https://primary-production-1ca15.up.railway.app/health`);
   console.log(`🧪 Test endpoint: https://primary-production-1ca15.up.railway.app/test`);
+  
+  // Railway-specific startup confirmation
+  console.log('✅ Railway deployment ready - server is listening');
   
   // Log all registered routes
   console.log('📋 Registered routes:');
