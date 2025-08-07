@@ -1,3 +1,0 @@
-[[routes]]
-src = "/execute-agent"
-dest = "/execute-agent" 
