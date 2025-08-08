@@ -24,9 +24,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "start": "node build/index.js",
+    "start": "node build/index-simple.js",
     "postinstall": "npm run build",
-    "dev": "ts-node src/index.ts",
+    "dev": "ts-node src/index-simple.ts",
     "test": "jest --runInBand",
     "railway:start": "node railway-start.js"
   },
