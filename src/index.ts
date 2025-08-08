@@ -247,7 +247,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
              const response = await fetch(`https://services.leadconnectorhq.com/${endpoint}`, {
         method,
                  headers: {
-           'Authorization': `Bearer ${targetClient.config.pit}`,
+           'Authorization': `Bearer ${process.env.GHL_API_KEY}`,
            'locationId': targetClient.config.locationId,
            'Content-Type': 'application/json',
            'version': '2021-07-28'

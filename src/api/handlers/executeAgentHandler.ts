@@ -59,7 +59,7 @@ async function makeMcpCall(endpoint: string, clientId: string, method: string = 
     const response = await fetch(`https://services.leadconnectorhq.com/${endpoint}`, {
       method,
       headers: {
-        'Authorization': `Bearer ${clientConfig.pit}`,
+        'Authorization': `Bearer ${process.env.GHL_API_KEY}`,
         'locationId': clientConfig.locationId,
         'Content-Type': 'application/json',
         'version': '2021-07-28'
