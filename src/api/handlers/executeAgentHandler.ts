@@ -132,7 +132,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     }
     
     // Use upsert endpoint which is more reliable for contact creation
-    const result = await makeMcpCall('contacts/upsert-contact', clientId, 'POST', contactData);
+    const result = await makeMcpCall('contacts/upsert', clientId, 'POST', contactData);
     return {
       action: 'create_contact',
       contact: result,
@@ -145,7 +145,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     console.log('🔍 Detected contact search request');
     const searchData = extractContactSearchData(input);
     
-    const result = await makeMcpCall('contacts/get-contacts', clientId, 'GET', searchData);
+    const result = await makeMcpCall('contacts', clientId, 'GET', searchData);
     return {
       action: 'search_contact',
       contacts: result,
@@ -164,7 +164,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     
     let contactId = updateData.contactId;
     if (!contactId && updateData.email) {
-      const contacts = await makeMcpCall('contacts/get-contacts', clientId, 'GET');
+      const contacts = await makeMcpCall('contacts', clientId, 'GET');
       const contact = contacts.find((c: any) => c.email === updateData.email);
       if (!contact) {
         throw new Error(`Contact not found with email: ${updateData.email}`);
@@ -172,7 +172,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       contactId = contact.id;
     }
     
-    const result = await makeMcpCall(`contacts/update-contact/${contactId}`, clientId, 'PUT', updateData.data);
+    const result = await makeMcpCall(`contacts/${contactId}`, clientId, 'PUT', updateData.data);
     return {
       action: 'update_contact',
       contact: result,
