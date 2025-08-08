@@ -46,6 +46,78 @@ app.get('/health', (req, res) => {
   });
 });
 
+// n8n Compatibility Endpoint - /execute-agent
+app.post('/execute-agent', async (req, res) => {
+  try {
+    const { action, data, contactIdentifier, clientId } = req.body;
+    
+    console.log('🔍 /execute-agent called:', { action, data, contactIdentifier, clientId });
+    
+    switch (action) {
+      case 'create':
+        const contact = await ghlClient.createContact(data);
+        res.json({
+          success: true,
+          contact,
+          action: 'create',
+          timestamp: new Date().toISOString()
+        });
+        break;
+        
+      case 'search':
+        const contacts = await ghlClient.searchContacts(data?.email);
+        res.json({
+          success: true,
+          contacts,
+          action: 'search',
+          timestamp: new Date().toISOString()
+        });
+        break;
+        
+      case 'update':
+        if (!contactIdentifier) {
+          return res.status(400).json({
+            success: false,
+            error: 'contactIdentifier required for update'
+          });
+        }
+        const updatedContact = await ghlClient.updateContact(contactIdentifier, data);
+        res.json({
+          success: true,
+          contact: updatedContact,
+          action: 'update',
+          timestamp: new Date().toISOString()
+        });
+        break;
+        
+      case 'sms':
+        const smsResult = await ghlClient.sendSMS(data.phone, data.message);
+        res.json({
+          success: true,
+          result: smsResult,
+          action: 'sms',
+          timestamp: new Date().toISOString()
+        });
+        break;
+        
+      default:
+        res.status(400).json({
+          success: false,
+          error: `Unknown action: ${action}`,
+          supportedActions: ['create', 'search', 'update', 'sms']
+        });
+    }
+    
+  } catch (error) {
+    console.error('❌ /execute-agent error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Contact routes
 app.post('/contacts', (req, res) => contactRoutes.createContact(req, res));
 app.get('/contacts', (req, res) => contactRoutes.searchContacts(req, res));
@@ -57,6 +129,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Simple GHL Server listening on port ${PORT}`);
   console.log(`🌐 URL: https://ghlmcp-production.up.railway.app`);
   console.log(`📋 Available endpoints:`);
+  console.log(`  POST /execute-agent - n8n compatibility`);
   console.log(`  POST /contacts - Create contact`);
   console.log(`  GET  /contacts - Search contacts`);
   console.log(`  PUT  /contacts/:id - Update contact`);
