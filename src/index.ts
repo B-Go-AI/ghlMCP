@@ -244,7 +244,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
     
     // Helper function to make MCP API calls
     const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
-             const response = await fetch(`https://rest.gohighlevel.com/v1/${endpoint}`, {
+             const response = await fetch(`https://rest.gohighlevel.com/${endpoint}`, {
         method,
         headers: {
           'Authorization': `Bearer ${targetClient.config.pit}`,
@@ -267,7 +267,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
         if (!validatedRequest.data) {
           throw new Error('Data is required for create action');
         }
-        result = await makeMcpCall('contacts/upsert', 'POST', validatedRequest.data);
+        result = await makeMcpCall('contacts/upsert-contact', 'POST', validatedRequest.data);
         console.log('✅ Contact created:', result.id);
         break;
         
@@ -278,7 +278,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
         if (!validatedRequest.data) {
           throw new Error('Data is required for update action');
         }
-        result = await makeMcpCall(`contacts/${contactId}`, 'PUT', validatedRequest.data);
+        result = await makeMcpCall(`contacts/update-contact/${contactId}`, 'PUT', validatedRequest.data);
         console.log('✅ Contact updated:', contactId);
         break;
         
@@ -286,12 +286,12 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
         if (!contactId) {
           throw new Error('Contact identifier is required for get action');
         }
-        result = await makeMcpCall(`contacts/${contactId}`, 'GET');
+        result = await makeMcpCall(`contacts/get-contact/${contactId}`, 'GET');
         console.log('✅ Contact retrieved:', contactId);
         break;
         
       case 'list':
-        result = await makeMcpCall('contacts', 'GET');
+        result = await makeMcpCall('contacts/get-contacts', 'GET');
         console.log(`✅ Listed ${Array.isArray(result) ? result.length : 0} contacts`);
         break;
         
@@ -299,7 +299,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
         if (!contactId) {
           throw new Error('Contact identifier is required for delete action');
         }
-        result = await makeMcpCall(`contacts/${contactId}`, 'DELETE');
+        result = await makeMcpCall(`contacts/delete-contact/${contactId}`, 'DELETE');
         console.log('✅ Contact deleted:', contactId);
         break;
         
@@ -307,7 +307,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
         if (!validatedRequest.data) {
           throw new Error('Data is required for upsert action');
         }
-        result = await makeMcpCall('contacts/upsert', 'POST', validatedRequest.data);
+        result = await makeMcpCall('contacts/upsert-contact', 'POST', validatedRequest.data);
         console.log('✅ Contact upserted:', result.id);
         break;
         

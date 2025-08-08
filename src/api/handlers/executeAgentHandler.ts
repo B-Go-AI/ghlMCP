@@ -56,7 +56,7 @@ async function makeMcpCall(endpoint: string, clientId: string, method: string = 
   });
 
   try {
-    const response = await fetch(`https://rest.gohighlevel.com/v1/${endpoint}`, {
+    const response = await fetch(`https://rest.gohighlevel.com/${endpoint}`, {
       method,
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,
@@ -132,7 +132,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     }
     
     // Use upsert endpoint which is more reliable for contact creation
-    const result = await makeMcpCall('contacts/upsert', clientId, 'POST', contactData);
+    const result = await makeMcpCall('contacts/upsert-contact', clientId, 'POST', contactData);
     return {
       action: 'create_contact',
       contact: result,
@@ -145,7 +145,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     console.log('🔍 Detected contact search request');
     const searchData = extractContactSearchData(input);
     
-    const result = await makeMcpCall('contacts', clientId, 'GET', searchData);
+    const result = await makeMcpCall('contacts/get-contacts', clientId, 'GET', searchData);
     return {
       action: 'search_contact',
       contacts: result,
@@ -164,7 +164,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     
     let contactId = updateData.contactId;
     if (!contactId && updateData.email) {
-      const contacts = await makeMcpCall('contacts', clientId, 'GET');
+      const contacts = await makeMcpCall('contacts/get-contacts', clientId, 'GET');
       const contact = contacts.find((c: any) => c.email === updateData.email);
       if (!contact) {
         throw new Error(`Contact not found with email: ${updateData.email}`);
@@ -172,7 +172,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       contactId = contact.id;
     }
     
-    const result = await makeMcpCall(`contacts/${contactId}`, clientId, 'PUT', updateData.data);
+    const result = await makeMcpCall(`contacts/update-contact/${contactId}`, clientId, 'PUT', updateData.data);
     return {
       action: 'update_contact',
       contact: result,
@@ -190,7 +190,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('SMS sending requires phone number and message');
     }
     
-    const result = await makeMcpCall('conversations/messages', clientId, 'POST', smsData);
+    const result = await makeMcpCall('conversations/send-a-new-message', clientId, 'POST', smsData);
     return {
       action: 'send_sms',
       message: result,
@@ -208,7 +208,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('Task creation requires title and contact ID');
     }
     
-    const result = await makeMcpCall('contacts/tasks', clientId, 'POST', taskData);
+    const result = await makeMcpCall('contacts/get-all-tasks', clientId, 'POST', taskData);
     return {
       action: 'create_task',
       task: result,
@@ -226,7 +226,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('Tag addition requires contact ID and tags');
     }
     
-    const result = await makeMcpCall('contacts/tags', clientId, 'POST', tagData);
+    const result = await makeMcpCall('contacts/add-tags', clientId, 'POST', tagData);
     return {
       action: 'add_tag',
       result,
@@ -244,7 +244,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('Tag removal requires contact ID and tags');
     }
     
-    const result = await makeMcpCall('contacts/tags/remove', clientId, 'POST', tagData);
+    const result = await makeMcpCall('contacts/remove-tags', clientId, 'POST', tagData);
     return {
       action: 'remove_tag',
       result,
@@ -259,7 +259,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
     console.log('📅 Detected calendar request');
     const calendarData = extractCalendarData(input);
     
-    const result = await makeMcpCall('calendars/events', clientId, 'GET', calendarData);
+    const result = await makeMcpCall('calendars/get-calendar-events', clientId, 'GET', calendarData);
     return {
       action: 'get_calendar_events',
       events: result,
@@ -277,7 +277,7 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       throw new Error('Opportunity creation requires contact ID and title');
     }
     
-    const result = await makeMcpCall('opportunities', clientId, 'POST', oppData);
+    const result = await makeMcpCall('opportunities/search-opportunity', clientId, 'POST', oppData);
     return {
       action: 'create_opportunity',
       opportunity: result,
