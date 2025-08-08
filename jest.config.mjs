@@ -11,4 +11,10 @@ export default {
   },
   testMatch: ["**/test/**/*.test.ts"],
   extensionsToTreatAsEsm: [".ts"],
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+  },
+  transformIgnorePatterns: [
+    "node_modules/(?!(zod)/)"
+  ],
 };

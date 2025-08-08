@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 import { CLIENTS } from './clients.js';
 import { executeAgentHandler } from './api/handlers/executeAgentHandler.js';
+import { mcpHandler, mcpSseHandler } from './api/handlers/mcpHandler.js';
 
 // Load environment variables
 dotenv.config();
@@ -90,6 +91,7 @@ app.get('/health', (req: Request, res: Response) => {
       NODE_ENV: process.env.NODE_ENV || 'development',
       PORT: process.env.PORT || '3000',
       GHL_API_KEY: process.env.GHL_API_KEY ? '✅ Set' : '❌ Missing',
+      GHL_LOCATION_ID: process.env.GHL_LOCATION_ID ? '✅ Set' : '❌ Missing',
       GHL_LOCATION_ID_BG: process.env.GHL_LOCATION_ID_BG ? '✅ Set' : '❌ Missing',
       PIT_BG: process.env.PIT_BG ? '✅ Set' : '❌ Missing'
     },
@@ -117,6 +119,7 @@ app.get('/test', (req: Request, res: Response) => {
       NODE_ENV: process.env.NODE_ENV || 'development',
       PORT: process.env.PORT || '3000',
       GHL_API_KEY: process.env.GHL_API_KEY ? '✅ Set' : '❌ Missing',
+      GHL_LOCATION_ID: process.env.GHL_LOCATION_ID ? '✅ Set' : '❌ Missing',
       GHL_LOCATION_ID_BG: process.env.GHL_LOCATION_ID_BG ? '✅ Set' : '❌ Missing',
       PIT_BG: process.env.PIT_BG ? '✅ Set' : '❌ Missing'
     }
@@ -139,6 +142,36 @@ app.post('/execute-agent', async (req: Request, res: Response) => {
   return executeAgentHandler(req, res);
 });
 console.log('✅ /execute-agent route registered with explicit handler');
+
+// MCP endpoints for n8n MCP Client node
+app.post('/mcp', async (req: Request, res: Response) => {
+  console.log('🤖 /mcp route hit');
+  return mcpHandler(req, res);
+});
+console.log('✅ /mcp route registered');
+
+// MCP endpoint with session ID (for n8n MCP Client node)
+app.post('/mcp/:sessionId', async (req: Request, res: Response) => {
+  console.log(`🤖 /mcp/${req.params.sessionId} route hit`);
+  return mcpHandler(req, res);
+});
+console.log('✅ /mcp/:sessionId route registered');
+
+// MCP SSE endpoint for streaming
+app.get('/mcp/:sessionId', (req: Request, res: Response) => {
+  console.log(`📡 /mcp/${req.params.sessionId} SSE route hit`);
+  return mcpSseHandler(req, res);
+});
+console.log('✅ /mcp/:sessionId SSE route registered');
+
+// MCP SSE endpoint with /sse suffix (for n8n compatibility)
+app.get('/mcp/:sessionId/sse', (req: Request, res: Response) => {
+  console.log(`📡 /mcp/${req.params.sessionId}/sse SSE route hit`);
+  return mcpSseHandler(req, res);
+});
+console.log('✅ /mcp/:sessionId/sse SSE route registered');
+
+
 
 // Legacy execution endpoint for n8n
 app.post('/execute-legacy', async (req: Request, res: Response) => {
@@ -211,7 +244,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
     
     // Helper function to make MCP API calls
     const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
-      const response = await fetch(`https://services.leadconnectorhq.com/mcp/${endpoint}`, {
+             const response = await fetch(`https://rest.gohighlevel.com/mcp/${endpoint}`, {
         method,
         headers: {
           'Authorization': `Bearer ${targetClient.config.pit}`,
@@ -234,7 +267,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
         if (!validatedRequest.data) {
           throw new Error('Data is required for create action');
         }
-        result = await makeMcpCall('contacts_create-contact', 'POST', validatedRequest.data);
+        result = await makeMcpCall('contacts_upsert-contact', 'POST', validatedRequest.data);
         console.log('✅ Contact created:', result.id);
         break;
         
@@ -434,6 +467,10 @@ app.use('*', (req: Request, res: Response) => {
       'GET /health',
       'GET /test',
       'POST /execute-agent',
+      'POST /mcp',
+      'POST /mcp/:sessionId',
+      'GET /mcp/:sessionId',
+      'GET /mcp/:sessionId/sse',
       'POST /execute-legacy',
       'POST /clients',
       'GET /clients',
@@ -447,10 +484,11 @@ app.use('*', (req: Request, res: Response) => {
 // Start server
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 MCP Server listening on 0.0.0.0:${PORT}`);
-  console.log(`🌐 Railway URL: https://primary-production-1ca15.up.railway.app`);
-  console.log(`🎯 Execute agent: https://primary-production-1ca15.up.railway.app/execute-agent`);
-  console.log(`✅ Health check: https://primary-production-1ca15.up.railway.app/health`);
-  console.log(`🧪 Test endpoint: https://primary-production-1ca15.up.railway.app/test`);
+  console.log(`🌐 Railway URL: https://ghlmcp-production.up.railway.app`);
+  console.log(`🎯 Execute agent: https://ghlmcp-production.up.railway.app/execute-agent`);
+  console.log(`🤖 MCP endpoint: https://ghlmcp-production.up.railway.app/mcp/69f7582d-9695-440e-8f50-ef9050adf9f4/sse`);
+  console.log(`✅ Health check: https://ghlmcp-production.up.railway.app/health`);
+  console.log(`🧪 Test endpoint: https://ghlmcp-production.up.railway.app/test`);
   
   // Railway-specific startup confirmation
   console.log('✅ Railway deployment ready - server is listening');
@@ -459,6 +497,10 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('📋 Registered routes:');
   console.log('  GET  /health');
   console.log('  POST /execute-agent');
+  console.log('  POST /mcp');
+  console.log('  POST /mcp/:sessionId');
+  console.log('  GET  /mcp/:sessionId');
+  console.log('  GET  /mcp/:sessionId/sse');
   console.log('  POST /execute-legacy');
   console.log('  POST /clients');
   console.log('  GET  /clients');
@@ -475,6 +517,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   
   // Check environment variables
   console.log('🔍 Environment Variables Check:');
+  console.log(`  GHL_API_KEY: ${process.env.GHL_API_KEY ? '✅ Set' : '❌ Missing'}`);
+  console.log(`  GHL_LOCATION_ID: ${process.env.GHL_LOCATION_ID ? '✅ Set' : '❌ Missing'}`);
   console.log(`  GHL_LOCATION_ID_BG: ${process.env.GHL_LOCATION_ID_BG ? '✅ Set' : '❌ Missing'}`);
   console.log(`  PIT_BG: ${process.env.PIT_BG ? '✅ Set' : '❌ Missing'}`);
   console.log(`  GHL_LOCATION_ID_ASB_FINANCIAL: ${process.env.GHL_LOCATION_ID_ASB_FINANCIAL ? '✅ Set' : '❌ Missing'}`);

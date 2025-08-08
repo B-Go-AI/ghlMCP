@@ -7,7 +7,7 @@ export interface ClientConfig {
 export const CLIENTS: Record<string, ClientConfig> = {
   "client_BG": {
     client_key: "client_BG",
-    locationId: process.env.GHL_LOCATION_ID_BG || "gMgcCQOGXIn1DK6lCDa7",
+    locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOCATION_ID_BG || "gMgcCQOGXIn1DK6lCDa7",
     pit: process.env.PIT_BG || "Pit-f79562d9-d6cd-4c32-bf57-8dde28fda52c"
   },
   "client_ASB Financial": {

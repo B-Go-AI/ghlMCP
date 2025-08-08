@@ -64,7 +64,7 @@ export async function createContact(params: CreateContactParams): Promise<Create
     }
 
     // Make direct POST request to MCP endpoint
-    const response = await fetch('https://services.leadconnectorhq.com/mcp/contacts_create-contact', {
+    const response = await fetch('https://rest.gohighlevel.com/mcp/contacts_upsert-contact', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${pit}`,

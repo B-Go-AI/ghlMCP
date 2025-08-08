@@ -1,21 +1,23 @@
 // src/api/handlers/executeAgentHandler.ts
-// Agent execution handler for GHL MCP standard
-// Follows official GHL MCP documentation: https://help.gohighlevel.com/support/solutions/articles/48001255159
+// Enhanced agent execution handler for GHL MCP standard
+// Optimized for n8n workflow reliability
 
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { CLIENTS } from '../../clients.js';
 
-// Request validation schema for agent execution
+// Enhanced request validation schema
 const ExecuteAgentRequestSchema = z.object({
   agentName: z.string().describe('Name of the agent to execute (e.g., "nora")'),
   clientId: z.string().describe('Client ID for GHL subaccount routing'),
-  input: z.string().describe('Natural language input for the agent to process')
+  input: z.string().describe('Natural language input for the agent to process'),
+  retryCount: z.number().default(0).describe('Current retry attempt'),
+  maxRetries: z.number().default(3).describe('Maximum retry attempts')
 });
 
 type ExecuteAgentRequest = z.infer<typeof ExecuteAgentRequestSchema>;
 
-// Response interface for agent execution
+// Enhanced response interface
 interface ExecuteAgentResponse {
   success: boolean;
   result?: any;
@@ -25,31 +27,36 @@ interface ExecuteAgentResponse {
   input: string;
   timestamp: string;
   responseTime: string;
+  retryCount?: number;
+  retryable?: boolean;
 }
 
-/**
- * Run agent with the specified parameters
- * This function processes natural language input and maps it to appropriate MCP tools
- */
-async function runAgent(agentName: string, clientId: string, input: string): Promise<any> {
-  console.log(`🤖 Running agent: ${agentName} for client: ${clientId}`);
-  console.log(`📝 Input: ${input}`);
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 1000,
+  maxDelay: 10000,
+  backoffMultiplier: 2
+};
 
-  // Validate client exists
+/**
+ * Enhanced MCP call function with retry logic and better error handling
+ */
+async function makeMcpCall(endpoint: string, clientId: string, method: string = 'POST', body?: any, retryCount: number = 0): Promise<any> {
   const clientConfig = CLIENTS[clientId];
   if (!clientConfig) {
     throw new Error(`Client configuration not found for clientId: ${clientId}`);
   }
 
-  // Helper function to make MCP API calls (using direct approach like createContact.ts)
-  const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
-    console.log('🚀 Making MCP call:', {
-      endpoint,
-      method,
-      requestBody: body
-    });
+  console.log(`🚀 Making MCP call (attempt ${retryCount + 1}):`, {
+    endpoint,
+    method,
+    clientId,
+    requestBody: body
+  });
 
-    const response = await fetch(`https://services.leadconnectorhq.com/mcp/${endpoint}`, {
+  try {
+    const response = await fetch(`https://rest.gohighlevel.com/mcp/${endpoint}`, {
       method,
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,
@@ -59,75 +66,105 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       body: body ? JSON.stringify(body) : undefined
     });
     
-    console.log('📥 MCP response status:', response.status);
+    console.log(`📥 MCP response status: ${response.status}`);
     
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      const error = new Error(`HTTP ${response.status}: ${errorText}`);
+      
+      // Determine if error is retryable
+      const isRetryable = response.status >= 500 || response.status === 429;
+      
+      if (isRetryable && retryCount < RETRY_CONFIG.maxRetries) {
+        const delay = Math.min(
+          RETRY_CONFIG.baseDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, retryCount),
+          RETRY_CONFIG.maxDelay
+        );
+        
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        return makeMcpCall(endpoint, clientId, method, body, retryCount + 1);
+      }
+      
+      throw error;
     }
     
     const result = await response.json();
-    console.log('📥 MCP response body:', result);
+    console.log('✅ MCP call successful:', result);
     
     return result;
-  };
+  } catch (error) {
+    console.error(`❌ MCP call failed (attempt ${retryCount + 1}):`, error);
+    
+    if (retryCount < RETRY_CONFIG.maxRetries) {
+      const delay = Math.min(
+        RETRY_CONFIG.baseDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, retryCount),
+        RETRY_CONFIG.maxDelay
+      );
+      
+      console.log(`⏳ Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      return makeMcpCall(endpoint, clientId, method, body, retryCount + 1);
+    }
+    
+    throw error;
+  }
+}
 
-  // Simple natural language processing to map input to MCP tools
+/**
+ * Enhanced agent runner with comprehensive tool support
+ */
+async function runAgent(agentName: string, clientId: string, input: string): Promise<any> {
+  console.log(`🤖 Running agent: ${agentName} for client: ${clientId}`);
+  console.log(`📝 Input: ${input}`);
+
   const lowerInput = input.toLowerCase();
   
-  // Contact creation patterns
+  // Contact Management Tools
   if (lowerInput.includes('create a contact') || lowerInput.includes('add contact') || lowerInput.includes('new contact')) {
     console.log('📞 Detected contact creation request');
-    
-    // Extract contact information from input
     const contactData = extractContactData(input);
     
     if (!contactData.email || !contactData.firstName || !contactData.lastName) {
       throw new Error('Contact creation requires email, firstName, and lastName');
     }
     
-         const result = await makeMcpCall('contacts_create-contact', 'POST', contactData);
-    console.log('✅ Contact created successfully');
+    // Use upsert endpoint which is more reliable for contact creation
+    const result = await makeMcpCall('contacts_upsert-contact', clientId, 'POST', contactData);
     return {
       action: 'create_contact',
       contact: result,
-      message: `Contact created for ${contactData.firstName} ${contactData.lastName}`
+      message: `Contact created for ${contactData.firstName} ${contactData.lastName}`,
+      contactId: result.id
     };
   }
   
-  // SMS sending patterns
-  if (lowerInput.includes('send sms') || lowerInput.includes('send message') || lowerInput.includes('text message')) {
-    console.log('💬 Detected SMS sending request');
+  if (lowerInput.includes('search contact') || lowerInput.includes('find contact') || lowerInput.includes('get contact')) {
+    console.log('🔍 Detected contact search request');
+    const searchData = extractContactSearchData(input);
     
-    const smsData = extractSmsData(input);
-    
-    if (!smsData.phone || !smsData.message) {
-      throw new Error('SMS sending requires phone number and message');
-    }
-    
-         const result = await makeMcpCall('conversations_send-a-new-message', 'POST', smsData);
-    console.log('✅ SMS sent successfully');
+    const result = await makeMcpCall('contacts_get-contacts', clientId, 'GET', searchData);
     return {
-      action: 'send_sms',
-      message: result,
-      text: `SMS sent to ${smsData.phone}`
+      action: 'search_contact',
+      contacts: result,
+      message: `Found ${result.length} contacts`,
+      count: result.length
     };
   }
   
-  // Contact update patterns
   if (lowerInput.includes('update contact') || lowerInput.includes('modify contact') || lowerInput.includes('edit contact')) {
     console.log('✏️ Detected contact update request');
-    
     const updateData = extractContactUpdateData(input);
     
     if (!updateData.contactId && !updateData.email) {
       throw new Error('Contact update requires contact ID or email');
     }
     
-    // If email provided, first find the contact
     let contactId = updateData.contactId;
     if (!contactId && updateData.email) {
-      const contacts = await makeMcpCall('contacts_get-contacts', 'GET');
+      const contacts = await makeMcpCall('contacts_get-contacts', clientId, 'GET');
       const contact = contacts.find((c: any) => c.email === updateData.email);
       if (!contact) {
         throw new Error(`Contact not found with email: ${updateData.email}`);
@@ -135,51 +172,125 @@ async function runAgent(agentName: string, clientId: string, input: string): Pro
       contactId = contact.id;
     }
     
-    const result = await makeMcpCall('contacts_update-contact', 'PUT', { contactId, ...updateData.data });
-    console.log('✅ Contact updated successfully');
+    const result = await makeMcpCall('contacts_update-contact', clientId, 'PUT', { contactId, ...updateData.data });
     return {
       action: 'update_contact',
       contact: result,
-      message: `Contact updated successfully`
+      message: `Contact updated successfully`,
+      contactId
     };
   }
   
-  // Contact lookup patterns
-  if (lowerInput.includes('find contact') || lowerInput.includes('get contact') || lowerInput.includes('lookup contact')) {
-    console.log('🔍 Detected contact lookup request');
+  // Communication Tools
+  if (lowerInput.includes('send sms') || lowerInput.includes('send message') || lowerInput.includes('text message')) {
+    console.log('💬 Detected SMS sending request');
+    const smsData = extractSmsData(input);
     
-    const lookupData = extractContactLookupData(input);
-    
-    if (!lookupData.contactId && !lookupData.email) {
-      throw new Error('Contact lookup requires contact ID or email');
+    if (!smsData.phone || !smsData.message) {
+      throw new Error('SMS sending requires phone number and message');
     }
     
-    let result;
-    if (lookupData.contactId) {
-      result = await makeMcpCall('contacts_get-contact', 'GET', { contactId: lookupData.contactId });
-    } else {
-      const contacts = await makeMcpCall('contacts_get-contacts', 'GET');
-      result = contacts.find((c: any) => c.email === lookupData.email);
-      if (!result) {
-        throw new Error(`Contact not found with email: ${lookupData.email}`);
-      }
-    }
-    
-    console.log('✅ Contact found successfully');
+    const result = await makeMcpCall('conversations_send-a-new-message', clientId, 'POST', smsData);
     return {
-      action: 'get_contact',
-      contact: result,
-      message: `Contact found: ${result.firstName} ${result.lastName}`
+      action: 'send_sms',
+      message: result,
+      text: `SMS sent to ${smsData.phone}`,
+      phone: smsData.phone
+    };
+  }
+  
+  // Task Management Tools
+  if (lowerInput.includes('create task') || lowerInput.includes('add task') || lowerInput.includes('new task')) {
+    console.log('📋 Detected task creation request');
+    const taskData = extractTaskData(input);
+    
+    if (!taskData.title || !taskData.contactId) {
+      throw new Error('Task creation requires title and contact ID');
+    }
+    
+    const result = await makeMcpCall('contacts_get-all-tasks', clientId, 'POST', taskData);
+    return {
+      action: 'create_task',
+      task: result,
+      message: `Task created: ${taskData.title}`,
+      taskId: result.id
+    };
+  }
+  
+  // Tag Management Tools
+  if (lowerInput.includes('add tag') || lowerInput.includes('tag contact')) {
+    console.log('🏷️ Detected tag addition request');
+    const tagData = extractTagData(input);
+    
+    if (!tagData.contactId || !tagData.tags || tagData.tags.length === 0) {
+      throw new Error('Tag addition requires contact ID and tags');
+    }
+    
+    const result = await makeMcpCall('contacts_add-tags', clientId, 'POST', tagData);
+    return {
+      action: 'add_tag',
+      result,
+      message: `Tags added: ${tagData.tags.join(', ')}`,
+      contactId: tagData.contactId,
+      tags: tagData.tags
+    };
+  }
+  
+  if (lowerInput.includes('remove tag') || lowerInput.includes('delete tag')) {
+    console.log('🏷️ Detected tag removal request');
+    const tagData = extractTagData(input);
+    
+    if (!tagData.contactId || !tagData.tags || tagData.tags.length === 0) {
+      throw new Error('Tag removal requires contact ID and tags');
+    }
+    
+    const result = await makeMcpCall('contacts_remove-tags', clientId, 'POST', tagData);
+    return {
+      action: 'remove_tag',
+      result,
+      message: `Tags removed: ${tagData.tags.join(', ')}`,
+      contactId: tagData.contactId,
+      tags: tagData.tags
+    };
+  }
+  
+  // Calendar Tools
+  if (lowerInput.includes('get calendar') || lowerInput.includes('calendar events') || lowerInput.includes('appointments')) {
+    console.log('📅 Detected calendar request');
+    const calendarData = extractCalendarData(input);
+    
+    const result = await makeMcpCall('calendars_get-calendar-events', clientId, 'GET', calendarData);
+    return {
+      action: 'get_calendar_events',
+      events: result,
+      message: `Found ${result.length} calendar events`,
+      count: result.length
+    };
+  }
+  
+  // Opportunity Tools
+  if (lowerInput.includes('create opportunity') || lowerInput.includes('add opportunity')) {
+    console.log('💰 Detected opportunity creation request');
+    const oppData = extractOpportunityData(input);
+    
+    if (!oppData.contactId || !oppData.title) {
+      throw new Error('Opportunity creation requires contact ID and title');
+    }
+    
+    const result = await makeMcpCall('opportunities_search-opportunity', clientId, 'POST', oppData);
+    return {
+      action: 'create_opportunity',
+      opportunity: result,
+      message: `Opportunity created: ${oppData.title}`,
+      opportunityId: result.id
     };
   }
   
   // Default response for unrecognized patterns
-  throw new Error(`Unrecognized action. Supported actions: create contact, send SMS, update contact, find contact. Input: ${input}`);
+  throw new Error(`Unrecognized action. Supported actions: create contact, search contact, update contact, send SMS, create task, add tag, remove tag, get calendar, create opportunity. Input: ${input}`);
 }
 
-/**
- * Extract contact data from natural language input
- */
+// Enhanced data extraction functions
 function extractContactData(input: string): any {
   const data: any = {};
   
@@ -205,30 +316,24 @@ function extractContactData(input: string): any {
   return data;
 }
 
-/**
- * Extract SMS data from natural language input
- */
-function extractSmsData(input: string): any {
+function extractContactSearchData(input: string): any {
   const data: any = {};
   
-  // Extract phone number
-  const phoneMatch = input.match(/(\d{3}[-.\s]?\d{3}[-.\s]?\d{4})/);
-  if (phoneMatch) {
-    data.phone = phoneMatch[1].replace(/[-.\s]/g, '');
+  // Extract search term
+  const searchMatch = input.match(/(?:search|find|get)\s+(?:contact|contacts)\s+(?:for|with)\s+([A-Za-z0-9@.]+)/i);
+  if (searchMatch) {
+    data.search = searchMatch[1];
   }
   
-  // Extract message (text between quotes or after "message")
-  const messageMatch = input.match(/message\s+['"]([^'"]+)['"]|['"]([^'"]+)['"]/);
-  if (messageMatch) {
-    data.message = messageMatch[1] || messageMatch[2];
+  // Extract limit
+  const limitMatch = input.match(/limit\s+(\d+)/i);
+  if (limitMatch) {
+    data.limit = parseInt(limitMatch[1]);
   }
   
   return data;
 }
 
-/**
- * Extract contact update data from natural language input
- */
 function extractContactUpdateData(input: string): any {
   const data: any = {};
   
@@ -236,6 +341,11 @@ function extractContactUpdateData(input: string): any {
   const emailMatch = input.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
   if (emailMatch) {
     data.email = emailMatch[1];
+  }
+  
+  const idMatch = input.match(/contact\s+(?:id\s+)?([a-zA-Z0-9]+)/i);
+  if (idMatch) {
+    data.contactId = idMatch[1];
   }
   
   // Extract update data
@@ -258,16 +368,86 @@ function extractContactUpdateData(input: string): any {
   return data;
 }
 
-/**
- * Extract contact lookup data from natural language input
- */
-function extractContactLookupData(input: string): any {
+function extractSmsData(input: string): any {
   const data: any = {};
   
-  // Extract email
-  const emailMatch = input.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-  if (emailMatch) {
-    data.email = emailMatch[1];
+  // Extract phone number
+  const phoneMatch = input.match(/(\d{3}[-.\s]?\d{3}[-.\s]?\d{4})/);
+  if (phoneMatch) {
+    data.phone = phoneMatch[1].replace(/[-.\s]/g, '');
+  }
+  
+  // Extract message (text between quotes or after "message")
+  const messageMatch = input.match(/message\s+['"]([^'"]+)['"]|['"]([^'"]+)['"]/);
+  if (messageMatch) {
+    data.message = messageMatch[1] || messageMatch[2];
+  }
+  
+  return data;
+}
+
+function extractTaskData(input: string): any {
+  const data: any = {};
+  
+  // Extract title
+  const titleMatch = input.match(/(?:task|title)\s+(?:is\s+)?['"]([^'"]+)['"]/i);
+  if (titleMatch) {
+    data.title = titleMatch[1];
+  }
+  
+  // Extract contact ID
+  const contactMatch = input.match(/contact\s+(?:id\s+)?([a-zA-Z0-9]+)/i);
+  if (contactMatch) {
+    data.contactId = contactMatch[1];
+  }
+  
+  return data;
+}
+
+function extractTagData(input: string): any {
+  const data: any = {};
+  
+  // Extract contact ID
+  const contactMatch = input.match(/contact\s+(?:id\s+)?([a-zA-Z0-9]+)/i);
+  if (contactMatch) {
+    data.contactId = contactMatch[1];
+  }
+  
+  // Extract tags
+  const tagsMatch = input.match(/tags?\s+['"]([^'"]+)['"]/i);
+  if (tagsMatch) {
+    data.tags = [tagsMatch[1]];
+  }
+  
+  return data;
+}
+
+function extractCalendarData(input: string): any {
+  const data: any = {};
+  
+  // Extract date range
+  const dateMatch = input.match(/from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/i);
+  if (dateMatch) {
+    data.startDate = dateMatch[1];
+    data.endDate = dateMatch[2];
+  }
+  
+  return data;
+}
+
+function extractOpportunityData(input: string): any {
+  const data: any = {};
+  
+  // Extract title
+  const titleMatch = input.match(/(?:opportunity|title)\s+(?:is\s+)?['"]([^'"]+)['"]/i);
+  if (titleMatch) {
+    data.title = titleMatch[1];
+  }
+  
+  // Extract contact ID
+  const contactMatch = input.match(/contact\s+(?:id\s+)?([a-zA-Z0-9]+)/i);
+  if (contactMatch) {
+    data.contactId = contactMatch[1];
   }
   
   return data;
@@ -303,7 +483,8 @@ export async function executeAgentHandler(req: Request, res: Response) {
     console.log('✅ Agent request validated:', {
       agentName: validatedRequest.agentName,
       clientId: validatedRequest.clientId,
-      inputLength: validatedRequest.input.length
+      inputLength: validatedRequest.input.length,
+      retryCount: validatedRequest.retryCount
     });
     
     // Execute the agent
@@ -323,7 +504,8 @@ export async function executeAgentHandler(req: Request, res: Response) {
       clientId: validatedRequest.clientId,
       input: validatedRequest.input,
       timestamp: new Date().toISOString(),
-      responseTime: `${responseTime}ms`
+      responseTime: `${responseTime}ms`,
+      retryCount: validatedRequest.retryCount
     };
     
     console.log('📤 Agent execution response:', {
@@ -348,12 +530,20 @@ export async function executeAgentHandler(req: Request, res: Response) {
         clientId: req.body?.clientId || 'unknown',
         input: req.body?.input || 'unknown',
         timestamp: new Date().toISOString(),
-        responseTime: `${responseTime}ms`
+        responseTime: `${responseTime}ms`,
+        retryCount: req.body?.retryCount || 0
       };
       
       res.status(400).json(response);
       return;
     }
+    
+    // Determine if error is retryable
+    const isRetryable = error instanceof Error && 
+      (error.message.includes('HTTP 5') || 
+       error.message.includes('HTTP 429') ||
+       error.message.includes('timeout') ||
+       error.message.includes('network'));
     
     // Handle other errors
     const response: ExecuteAgentResponse = {
@@ -363,7 +553,9 @@ export async function executeAgentHandler(req: Request, res: Response) {
       clientId: req.body?.clientId || 'unknown',
       input: req.body?.input || 'unknown',
       timestamp: new Date().toISOString(),
-      responseTime: `${responseTime}ms`
+      responseTime: `${responseTime}ms`,
+      retryCount: req.body?.retryCount || 0,
+      retryable: isRetryable
     };
     
     res.status(500).json(response);
