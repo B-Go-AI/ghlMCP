@@ -49,13 +49,57 @@ app.get('/health', (req, res) => {
 // n8n Compatibility Endpoint - /execute-agent
 app.post('/execute-agent', async (req, res) => {
   try {
-    const { action, data, contactIdentifier, clientId } = req.body;
+    console.log('🔍 /execute-agent called with body:', JSON.stringify(req.body, null, 2));
     
-    console.log('🔍 /execute-agent called:', { action, data, contactIdentifier, clientId });
+    const { action, data, contactIdentifier, clientId, input, agentName } = req.body;
     
-    switch (action) {
+    // Handle different n8n formats
+    let actualAction = action;
+    let actualData = data;
+    
+    // If no action, try to infer from input or other fields
+    if (!actualAction) {
+      if (input && typeof input === 'string') {
+        // Try to parse action from input string
+        if (input.toLowerCase().includes('create') && input.toLowerCase().includes('contact')) {
+          actualAction = 'create';
+        } else if (input.toLowerCase().includes('search') || input.toLowerCase().includes('find')) {
+          actualAction = 'search';
+        } else if (input.toLowerCase().includes('update')) {
+          actualAction = 'update';
+        } else if (input.toLowerCase().includes('sms') || input.toLowerCase().includes('message')) {
+          actualAction = 'sms';
+        }
+      }
+    }
+    
+    // If still no action, default to create
+    if (!actualAction) {
+      actualAction = 'create';
+    }
+    
+    // If no data, try to extract from input
+    if (!actualData && input) {
+      if (typeof input === 'string') {
+        // Simple parsing for common patterns
+        const emailMatch = input.match(/[\w.-]+@[\w.-]+\.\w+/);
+        const nameMatch = input.match(/(?:named|name)\s+([A-Za-z]+\s+[A-Za-z]+)/i);
+        
+        if (emailMatch || nameMatch) {
+          actualData = {
+            email: emailMatch ? emailMatch[0] : undefined,
+            firstName: nameMatch ? nameMatch[1].split(' ')[0] : undefined,
+            lastName: nameMatch ? nameMatch[1].split(' ')[1] : undefined
+          };
+        }
+      }
+    }
+    
+    console.log('🔧 Processed request:', { actualAction, actualData, contactIdentifier, clientId });
+    
+    switch (actualAction) {
       case 'create':
-        const contact = await ghlClient.createContact(data);
+        const contact = await ghlClient.createContact(actualData);
         res.json({
           success: true,
           contact,
@@ -65,7 +109,7 @@ app.post('/execute-agent', async (req, res) => {
         break;
         
       case 'search':
-        const contacts = await ghlClient.searchContacts(data?.email);
+        const contacts = await ghlClient.searchContacts(actualData?.email);
         res.json({
           success: true,
           contacts,
@@ -81,7 +125,7 @@ app.post('/execute-agent', async (req, res) => {
             error: 'contactIdentifier required for update'
           });
         }
-        const updatedContact = await ghlClient.updateContact(contactIdentifier, data);
+        const updatedContact = await ghlClient.updateContact(contactIdentifier, actualData);
         res.json({
           success: true,
           contact: updatedContact,
@@ -91,7 +135,7 @@ app.post('/execute-agent', async (req, res) => {
         break;
         
       case 'sms':
-        const smsResult = await ghlClient.sendSMS(data.phone, data.message);
+        const smsResult = await ghlClient.sendSMS(actualData.phone, actualData.message);
         res.json({
           success: true,
           result: smsResult,
