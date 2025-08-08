@@ -246,11 +246,12 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
     const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
              const response = await fetch(`https://services.leadconnectorhq.com/${endpoint}`, {
         method,
-        headers: {
-          'Authorization': `Bearer ${targetClient.config.pit}`,
-          'locationId': targetClient.config.locationId,
-          'Content-Type': 'application/json'
-        },
+                 headers: {
+           'Authorization': `Bearer ${targetClient.config.pit}`,
+           'locationId': targetClient.config.locationId,
+           'Content-Type': 'application/json',
+           'version': '2021-07-28'
+         },
         ...(body && { body: JSON.stringify(body) })
       });
       

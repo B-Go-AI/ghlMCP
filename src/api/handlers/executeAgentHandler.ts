@@ -61,7 +61,8 @@ async function makeMcpCall(endpoint: string, clientId: string, method: string = 
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,
         'locationId': clientConfig.locationId,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'version': '2021-07-28'
       },
       body: body ? JSON.stringify(body) : undefined
     });
