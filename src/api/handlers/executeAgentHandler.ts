@@ -56,7 +56,7 @@ async function makeMcpCall(endpoint: string, clientId: string, method: string = 
   });
 
   try {
-    const response = await fetch(`https://rest.gohighlevel.com/${endpoint}`, {
+    const response = await fetch(`https://services.leadconnectorhq.com/${endpoint}`, {
       method,
       headers: {
         'Authorization': `Bearer ${clientConfig.pit}`,

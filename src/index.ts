@@ -244,7 +244,7 @@ app.post('/execute-legacy', async (req: Request, res: Response) => {
     
     // Helper function to make MCP API calls
     const makeMcpCall = async (endpoint: string, method: string = 'POST', body?: any) => {
-             const response = await fetch(`https://rest.gohighlevel.com/${endpoint}`, {
+             const response = await fetch(`https://services.leadconnectorhq.com/${endpoint}`, {
         method,
         headers: {
           'Authorization': `Bearer ${targetClient.config.pit}`,
